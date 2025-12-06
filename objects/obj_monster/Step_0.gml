@@ -1,126 +1,110 @@
-/// @description Máquina de Estados
+var _player = instance_nearest(x, y, obj_jogador);
+var _dist = point_distance(x, y, _player.x, _player.y);
 
-// Se o jogo estiver pausado, saia (implemente checagem global se tiver)
-// if (global.pause) exit;
+// Cooldown
+if (attack_cooldown > 0) attack_cooldown--;
 
-// Gerenciar morte
-if (state == "DEATH") {
-    sprite_index = spr_death;
-    if (image_index >= image_number - 1) {
-        image_speed = 0;
-        image_alpha -= 0.02;
-        if (image_alpha <= 0) instance_destroy();
-    }
-    return; // Não executa o resto
-}
+// Se estiver congelado pelo debug, sai
+if (debug_freeze) exit;
 
-// Reduz cooldowns
-for (var i = 0; i < array_length(move_cooldowns); i++) {
-    if (move_cooldowns[i] > 0) move_cooldowns[i]--;
-}
-
-// --- MÁQUINA DE ESTADOS ---
 switch (state) {
-    case "IDLE":
-        sprite_index = spr_idle;
-        speed = 0;
-        
-        // IA: Decide se anda ou fica parado
-        if (state_timer++ > 60) {
-            // 30% de chance de andar, 70% de ficar
-            if (choose(true, false, false)) {
-                state = "WANDER";
-                direction = irandom(360);
-            }
-            state_timer = 0;
-        }
-        check_aggro();
+    case MO_STATE.IDLE:
+        if (_dist < aggro_range) state = MO_STATE.CHASE;
         break;
 
-    case "WANDER":
-        sprite_index = spr_walk;
-        speed = spd * 0.5; // Anda devagar
+    case MO_STATE.CHASE:
+        // Define qual ataque usar (Simples IA: tenta especial, senão básico)
+        var _chosen = undefined;
         
-        // Colisão simples
-        if (place_meeting(x + hspeed, y + vspeed, obj_parede)) {
-            direction = irandom(360);
+        // Se especial pronto e no range
+        if (attack_cooldown <= 0 && _dist <= special_atk.range) {
+            _chosen = special_atk;
+        } 
+        // Se básico pronto e no range (e especial em CD ou fora de range)
+        else if (attack_cooldown <= 0 && _dist <= basic_atk.range) {
+            _chosen = basic_atk;
         }
         
-        // Volta para Idle
-        if (state_timer++ > 120) {
-            state = "IDLE";
-            state_timer = 0;
+        // Tratamento especial para ataques "self" (proximity) e "area"
+        if (_chosen != undefined) {
+            // Se for ataque de área global (range 0) ou self, atira
+            if (_chosen.shape == "self" || _chosen.shape == "area") {
+                if (_dist <= 150) { // Range fixo de aggro para melee/self
+                    current_attack = _chosen;
+                    state = MO_STATE.CHANNELING;
+                    channel_timer = _chosen.channel_time;
+                    target_x = _player.x;
+                    target_y = _player.y;
+                } else {
+                    mp_potential_step(_player.x, _player.y, spd, false);
+                }
+            }
+            else {
+                // Ataques de projétil/linha
+                current_attack = _chosen;
+                state = MO_STATE.CHANNELING;
+                channel_timer = _chosen.channel_time;
+                target_x = _player.x;
+                target_y = _player.y;
+            }
+        } 
+        else {
+            // Move-se se não estiver atacando
+            if (_dist > aggro_range * 1.5) state = MO_STATE.IDLE;
+            else mp_potential_step(_player.x, _player.y, spd, false);
         }
-        check_aggro();
         break;
 
-    case "CHASE":
-        sprite_index = spr_walk;
-        
-        if (instance_exists(target)) {
-            // Movimento em direção ao alvo
-            var _dir_to_target = point_direction(x, y, target.x, target.y);
-            var _dist_to_target = point_distance(x, y, target.x, target.y);
-            
-            // "mp_potential_step" tenta ir para o alvo desviando de paredes
-            // Se preferir movimento mais fluido sem travar:
-            mp_potential_step(target.x, target.y, chase_spd, false);
-            
-            face_dir = _dir_to_target; // Atualiza para onde olha
-            
-            // Checa alcance de ataque
-            if (_dist_to_target <= attack_range) {
-                state = "ATTACK";
-                state_timer = 0;
-                speed = 0; // Para para atacar
-            }
-            
-            // Desiste se fugir muito
-            if (_dist_to_target > aggro_range * 1.5) {
-                state = "IDLE";
-                target = noone;
-            }
+    case MO_STATE.CHANNELING:
+        // Parado carregando
+        if (channel_timer > 0) {
+            channel_timer--;
+            // Travar mira apenas no início ou seguir? Vamos travar para permitir esquiva.
         } else {
-            state = "IDLE";
+            state = MO_STATE.ATTACKING;
         }
         break;
 
-    case "ATTACK":
-        sprite_index = spr_attack; // Se tiver sprite de ataque
-        speed = 0;
+    case MO_STATE.ATTACKING:
+        // Instancia o obj_skillshot
+        var _dir = point_direction(x, y, target_x, target_y);
         
-        // Lógica de escolha de golpe
-        var _move_to_use = -1;
+        var _s = instance_create_layer(x, y, "Instances", obj_skillshot);
+        _s.attack_data = current_attack;
+        _s.owner = id;
+        _s.target_type = obj_jogador;
         
-        // Prioriza Slot 1 (Ativo), senão Slot 0 (Auto)
-        if (array_length(moveset) > 1 && !is_undefined(moveset[1]) && move_cooldowns[1] <= 0) {
-            _move_to_use = 1;
-        } else if (!is_undefined(moveset[0]) && move_cooldowns[0] <= 0) {
-            _move_to_use = 0;
+        // Configura posição e movimento
+        if (current_attack.shape == "self") {
+            _s.x = x;
+            _s.y = y;
+            _s.speed = 0;
+            _s.image_angle = 0;
+        } 
+        else if (current_attack.shape == "area") {
+            _s.x = target_x; // Spawna no alvo
+            _s.y = target_y;
+            _s.speed = 0;
         }
-        
-        if (_move_to_use != -1) {
-            perform_attack(_move_to_use);
-            move_cooldowns[_move_to_use] = moveset[_move_to_use].cooldown;
-            
-            // Entra em Cooldown (Pausa pós ataque)
-            state = "COOLDOWN";
-            state_timer = 45; // Fica parado 45 frames recuperando fôlego
-        } else {
-            // Tudo em cooldown? Kiting (recua ou persegue)
-            state = "CHASE";
+        else {
+            _s.x = x;
+            _s.y = y;
+            _s.direction = _dir;
+            _s.image_angle = _dir;
+            _s.speed = current_attack.proj_speed;
         }
+
+        // Aplica Cooldown
+        attack_cooldown = current_attack.cooldown_max;
+        state = MO_STATE.COOLDOWN;
+        state_timer = 30; // Pausa pós-golpe
         break;
-        
-    case "COOLDOWN":
-        sprite_index = spr_idle;
-        speed = 0;
-        if (state_timer-- <= 0) state = "CHASE";
+
+    case MO_STATE.COOLDOWN:
+        if (state_timer > 0) state_timer--;
+        else state = MO_STATE.CHASE;
         break;
 }
 
-// --- Atualiza Sprite (Flip X) ---
-if (x != xprevious) {
-    if (x > xprevious) image_xscale = 1;
-    else image_xscale = -1;
-}
+// Morte
+if (hp <= 0) instance_destroy();

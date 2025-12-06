@@ -1,8 +1,9 @@
-owner = noone; // Quem atirou (para não se acertar)
-move_data = undefined; // Dados do golpe (struct Move)
-lifetime = 0;
-max_lifetime = 120; // Segurança para destruir
-damage_dealt = false; // Para AoE não dar dano todo frame
-target_x = x;
-target_y = y;
-dir = 0;
+attack_data = undefined;
+owner = noone;
+target_type = noone;
+
+dist_traveled = 0;
+life_timer = 0; // Para ataques estáticos (area/self)
+max_life = 60;  // Duração padrão para areas
+
+hit_list = ds_list_create(); // Para garantir que area/cone só bata 1 vez por tick ou por cast
