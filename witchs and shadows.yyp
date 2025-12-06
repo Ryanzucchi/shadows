@@ -43,6 +43,7 @@
     {"id":{"name":"obj_parede","path":"objects/obj_parede/obj_parede.yy",},},
     {"id":{"name":"obj_skillshot","path":"objects/obj_skillshot/obj_skillshot.yy",},},
     {"id":{"name":"Room1","path":"rooms/Room1/Room1.yy",},},
+    {"id":{"name":"scr_combat_logic","path":"scripts/scr_combat_logic/scr_combat_logic.yy",},},
     {"id":{"name":"scr_player_states","path":"scripts/scr_player_states/scr_player_states.yy",},},
     {"id":{"name":"Decorations","path":"sprites/Decorations/Decorations.yy",},},
     {"id":{"name":"spr_dash_down","path":"sprites/spr_dash_down/spr_dash_down.yy",},},

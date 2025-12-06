@@ -1,56 +1,98 @@
-// Verifica se os dados existem, senão destrói para evitar erro
-if (is_undefined(move_data)) { 
-    instance_destroy(); 
-    exit; 
-}
+if (attack_data == undefined) { instance_destroy(); exit; }
 
-lifetime++;
+// --- Comportamento por Forma ---
 
-// --- Lógica de Movimento ---
-var _spd = move_data.spd;
-var _dir = dir;
-
-if (move_data.shape == "linear" || move_data.shape == "cone") {
-    x += lengthdir_x(_spd, _dir);
-    y += lengthdir_y(_spd, _dir);
-    
-    // Destruir se bater na parede (apenas skillshots lineares)
-    if (place_meeting(x, y, obj_parede)) {
-        instance_destroy();
-        exit;
+// 1. Projéteis Móveis (Circle/Line que se movem)
+if (attack_data.shape == "circle" || attack_data.shape == "line") {
+    // Se for 'line' mas com velocidade 0 (Parede), não move
+    if (attack_data.proj_speed > 0) {
+        x += lengthdir_x(attack_data.proj_speed, direction);
+        y += lengthdir_y(attack_data.proj_speed, direction);
+        dist_traveled += attack_data.proj_speed;
+        
+        if (dist_traveled >= attack_data.range) instance_destroy();
+    } else {
+        // Parede estática
+        life_timer++;
+        if (life_timer > 120) instance_destroy(); // Dura 2 seg
     }
 }
 
-// --- Lógica de Colisão (Dano) ---
-var _radius = 10; // Raio padrão para projétil linear
-if (move_data.shape != "linear") {
-    _radius = move_data.range; // Raio do golpe em área
+// 2. Ataques Estáticos (Area / Self / Cone instantâneo)
+if (attack_data.shape == "area" || attack_data.shape == "self" || attack_data.shape == "cone") {
+    life_timer++;
+    // Duração visual do efeito
+    if (life_timer > 30) instance_destroy(); 
 }
 
-var _list = ds_list_create();
+// --- Colisão e Dano ---
+var _hit_now = false;
+var _victims = ds_list_create();
+var _count = 0;
 
-// Tenta executar a colisão. 
-// Se der erro de argumentos aqui, tente remover o último ', false' (o argumento ordered).
-// Padrão GMS2 atual: 8 argumentos.
-collision_circle_list(x, y, _radius, obj_jogador, false, true, _list, false);
+// A. Colisão Circular (Circle, Area, Self)
+if (attack_data.shape == "circle" || attack_data.shape == "area" || attack_data.shape == "self") {
+    _count = collision_circle_list(x, y, attack_data.width, target_type, false, true, _victims, false);
+}
+// B. Colisão Retangular Rotacionada (Line)
+else if (attack_data.shape == "line") {
+    // Simplificação: Line como vários círculos ou collision_line (fino)
+    // Para 'width' grosso, ideal é checar colisão retangular. 
+    // Vamos usar collision_line com largura simulada
+    _count = collision_circle_list(x, y, attack_data.width, target_type, false, true, _victims, false); 
+    // (Simplificado para este exemplo, ideal seria collision_rectangle rotacionado)
+}
+// C. Colisão Cone (Triângulo)
+else if (attack_data.shape == "cone") {
+    var _len = attack_data.range;
+    var _w = attack_data.width; // Ângulo
+    var _ang = image_angle;
+    
+    // Pega candidatos no raio
+    var _candidates = ds_list_create();
+    var _c_count = collision_circle_list(x, y, _len, target_type, false, true, _candidates, false);
+    
+    // Filtra quem está no ângulo
+    for (var i = 0; i < _c_count; i++) {
+        var _inst = _candidates[| i];
+        var _dir_to = point_direction(x, y, _inst.x, _inst.y);
+        if (abs(angle_difference(_dir_to, _ang)) < _w / 2) {
+            ds_list_add(_victims, _inst);
+        }
+    }
+    ds_list_destroy(_candidates);
+    _count = ds_list_size(_victims);
+}
 
-var _num_hits = ds_list_size(_list);
-
-if (_num_hits > 0 && instance_exists(owner)) {
-    // Garante que não é friendly fire (dono batendo nele mesmo)
-    if (owner.object_index != obj_jogador) {
-        for (var i = 0; i < _num_hits; i++) {
-            var _hit_instance = _list[| i];
+// --- Aplica Dano ---
+for (var i = 0; i < _count; i++) {
+    var _vic = _victims[| i];
+    
+    // Verifica se já atingiu este alvo (para não dar dano todo frame em areas)
+    if (ds_list_find_index(hit_list, _vic) == -1) {
+        
+        if (variable_instance_exists(_vic, "hp")) {
+            // Cálculo de Elemento
+            var _def_type = variable_instance_exists(_vic, "type_1") ? _vic.type_1 : "normal";
+            var _mult = get_type_effectiveness(attack_data.element, _def_type);
             
-            // Verifica se a instância atingida ainda existe
-            if (instance_exists(_hit_instance)) {
-                // APLICAR DANO AQUI
-                // Exemplo: _hit_instance.hp -= move_data.base_power;
-                // show_debug_message("Atingiu o jogador com: " + move_data.name);
+            var _dmg = attack_data.damage * _mult;
+            _vic.hp -= _dmg;
+            
+            // Efeitos Especiais
+            if (attack_data.effect == "push") {
+                var _push_dir = point_direction(x, y, _vic.x, _vic.y);
+                _vic.x += lengthdir_x(20, _push_dir); // Empurrão simples
+                _vic.y += lengthdir_y(20, _push_dir);
+            }
+            if (attack_data.effect == "stun") {
+                // Implementar lógica de stun no objeto jogador/monstro se quiser
             }
             
-            // Se for linear, o projétil some no primeiro impacto
-            if (move_data.shape == "linear") {
+            ds_list_add(hit_list, _vic);
+            
+            // Se não for perfurante ("pierce") nem área persistente, destroi ao bater
+            if (attack_data.shape == "circle" && attack_data.effect != "pierce") {
                 instance_destroy();
                 break; 
             }
@@ -58,8 +100,4 @@ if (_num_hits > 0 && instance_exists(owner)) {
     }
 }
 
-// Limpa a memória da lista (Essencial!)
-ds_list_destroy(_list);
-
-// Destroi o objeto se o tempo de vida acabar
-if (lifetime > max_lifetime) instance_destroy();
+ds_list_destroy(_victims);

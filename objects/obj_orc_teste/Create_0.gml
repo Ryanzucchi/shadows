@@ -1,35 +1,35 @@
-/// @description Configuração do Orc
+// --- Status Básicos ---
+hp = 50;
+max_hp = 50;
+spd = 1.2;
+xp_value = 10;
 
-// 1. Carrega as variáveis e lógica do novo obj_monster
-event_inherited(); 
+// --- Carrega Dados do Banco ---
+var _db_sombra = global.attack_database.sombra;
 
-// 2. Personaliza os atributos (Usando os nomes NOVOS do obj_monster)
-name = "Orc Guerreiro";
-hp_max = 50;
-hp = hp_max;
+// Carrega os ataques corretamente
+basic_atk = _db_sombra.basics[0];   // Orbe Sombrio
+special_atk = _db_sombra.specials[0]; // Vazio (ou outro especial)
 
-spd = 1.2;          // Era "velocidade"
-aggro_range = 250;  // Era "raio_visao"
-attack_range = 50;  // Era "raio_ataque"
+// --- Timers e Controle ---
+state = MO_STATE.IDLE; // <--- MUDANÇA: Usar MO_STATE, não "IDLE"
+state_timer = 0;
 
-// 3. Define os Sprites
-spr_idle = spr_orc;
-spr_walk = spr_orc;   // Se tiver animação de andar, troque aqui
-spr_attack = spr_orc; // Se tiver animação de ataque, troque aqui
-spr_death = spr_orc;  // Sprite de morte
+attack_cooldown = 0;
+special_cooldown = 180; // Começa com cooldown para não usar instantâneo
+channel_timer = 0;
 
-// Atualiza o sprite inicial
-sprite_index = spr_idle;
+target_x = 0;
+target_y = 0;
+current_active_attack = undefined; 
 
-// 4. Configura os Golpes (A nova forma de atacar)
-// O obj_monster vai ler isso e criar o projétil/hitbox automaticamente
-if (variable_global_exists("move_library")) {
-    // Slot 0: Ataque Básico (Automático) - Vamos usar um golpe "melee" curto
-    // Se não tiver golpe criado na library, crie um "soco" ou "corte" no obj_game_control
-    // Por enquanto, usaremos o 'ember' como teste ou crie um novo:
-    
-    // Exemplo de golpe físico para Orc (Adicione isso no obj_game_control depois):
-    // global.move_library.slash = new Move("Corte", ELEMENT.NORMAL, 10, 45, "cone", 60, 0, c_white);
-    
-    moveset[0] = global.move_library.ember; // Usando Ember temporariamente para testar
-}
+aggro_range = 250;
+show_debug_info = true;
+
+// --- Variáveis de Debug (Obrigatórias) ---
+debug_open = false;
+debug_selected_type_idx = 3; // Sombra
+debug_selected_atk_idx = 0;
+debug_types_list = ["grama", "agua", "fogo", "sombra", "inseto", "normal", "metal", "dragao", "luz", "terra"];
+debug_freeze = false;
+type_1 = "sombra";
