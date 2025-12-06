@@ -168,3 +168,7 @@ switch (state) {
 }
 
 depth = -bbox_bottom;
+
+if (hp <= 0) {
+    state = "DEATH"; // Você já tem a sprite de morte
+}

@@ -9,6 +9,8 @@ vspd = 0;
 len = 0;
 dir = 0;
 
+hp = 100;
+
 spd_walk = 2.0;    // Velocidade normal
 spd_run  = 6.5;    // Velocidade correndo (Shift)
 dash_spd = 6.0;    // Velocidade do Dash

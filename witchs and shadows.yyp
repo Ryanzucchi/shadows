@@ -8,7 +8,7 @@
     "children":[],
     "name":"Default",
   },
-  "defaultScriptType":0,
+  "defaultScriptType":1,
   "Folders":[
     {"$GMFolder":"","%Name":"obj","folderPath":"folders/obj.yy","name":"obj","resourceType":"GMFolder","resourceVersion":"2.0",},
     {"$GMFolder":"","%Name":"script","folderPath":"folders/script.yy","name":"script","resourceType":"GMFolder","resourceVersion":"2.0",},
@@ -36,10 +36,12 @@
   "name":"witchs and shadows",
   "resources":[
     {"id":{"name":"obj_dash_dust","path":"objects/obj_dash_dust/obj_dash_dust.yy",},},
+    {"id":{"name":"obj_game_control","path":"objects/obj_game_control/obj_game_control.yy",},},
     {"id":{"name":"obj_jogador","path":"objects/obj_jogador/obj_jogador.yy",},},
+    {"id":{"name":"obj_monster","path":"objects/obj_monster/obj_monster.yy",},},
     {"id":{"name":"obj_orc_teste","path":"objects/obj_orc_teste/obj_orc_teste.yy",},},
     {"id":{"name":"obj_parede","path":"objects/obj_parede/obj_parede.yy",},},
-    {"id":{"name":"obj_sombra_parent","path":"objects/obj_sombra_parent/obj_sombra_parent.yy",},},
+    {"id":{"name":"obj_skillshot","path":"objects/obj_skillshot/obj_skillshot.yy",},},
     {"id":{"name":"Room1","path":"rooms/Room1/Room1.yy",},},
     {"id":{"name":"scr_player_states","path":"scripts/scr_player_states/scr_player_states.yy",},},
     {"id":{"name":"Decorations","path":"sprites/Decorations/Decorations.yy",},},

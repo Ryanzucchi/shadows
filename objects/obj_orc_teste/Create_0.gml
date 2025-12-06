@@ -1,20 +1,20 @@
-// 1. Puxa a lógica do Pai (IMPORTANTE!)
-event_inherited();
+// 1. IMPORTANTE: Carrega as variáveis do pai primeiro
+event_inherited(); 
 
-// 2. Configura SÓ o que é único desse bicho
-nome = "Orc de Teste";
-hp_max = 50;
-hp_atual = hp_max;
-velocidade = 1.2;
-raio_visao = 180;
-raio_ataque = 25;
+// 2. Personaliza
+name = "Orc Guerreiro";
+hp_max = 150;
+hp = hp_max;
+spd = 1.5;
+types = [ELEMENT.PEDRA, -1]; // Tipo Pedra
+behavior = BEHAVIOR.AGRESSIVO;
 
-// 3. Linka os Sprites (Aqui você usa as imagens que mandou)
-spr_idle = spr_orc;
-spr_walk = spr_orc;
-spr_attack = spr_orc; // ou 02
-spr_hurt = spr_orc;
-spr_death = spr_orc;
+// 3. Define Sprites Específicos (se você tiver)
+// spr_idle = spr_orc_idle;
+// spr_walk = spr_orc_walk;
 
-// Define o sprite inicial
-sprite_index = spr_orc;
+// 4. Define Golpes (Usando a biblioteca global)
+if (variable_global_exists("move_library")) {
+    moveset[0] = global.move_library.ember; // Exemplo: Orc cospe fogo fraco
+    moveset[1] = global.move_library.flamethrower; // E ataque forte
+}
