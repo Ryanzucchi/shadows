@@ -1,0 +1,1 @@
+event_inherited(); // Isso desenha a área amarela/vermelha do pai

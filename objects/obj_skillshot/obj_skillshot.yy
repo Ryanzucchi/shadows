@@ -31,7 +31,10 @@
   "resourceType":"GMObject",
   "resourceVersion":"2.0",
   "solid":false,
-  "spriteId":null,
+  "spriteId":{
+    "name":"spr_parede_base",
+    "path":"sprites/spr_parede_base/spr_parede_base.yy",
+  },
   "spriteMaskId":null,
   "visible":true,
 }
