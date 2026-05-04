@@ -1,5 +1,12 @@
 if (attack_data == undefined) { instance_destroy(); exit; }
 
+// --- EFEITO VISUAL DE TEXTO PÓS-CAPTURA ---
+if (variable_instance_exists(id, "is_capture_result") && is_capture_result) {
+    life_timer++;
+    y -= 0.5; // Texto sobe flutuando
+    if (life_timer > 60) instance_destroy(); // Some após 1 segundo
+    exit; // Ignora resto da lógica de projétil
+}
 // --- Comportamento por Forma ---
 
 // 1. Projéteis Móveis (Circle/Line que se movem)
@@ -68,10 +75,26 @@ else if (attack_data.shape == "cone") {
 for (var i = 0; i < _count; i++) {
     var _vic = _victims[| i];
     
-    // Verifica se já atingiu este alvo (para não dar dano todo frame em areas)
+    // Verifica se já atingiu este alvo
     if (ds_list_find_index(hit_list, _vic) == -1) {
-        
         if (variable_instance_exists(_vic, "hp")) {
+            
+            // --- IGNORAR FOGO AMIGO ---
+            var _owner_is_ally = false;
+            if (instance_exists(owner)) {
+                if (owner.object_index == obj_jogador) _owner_is_ally = true;
+                else if (variable_instance_exists(owner, "is_ally") && owner.is_ally) _owner_is_ally = true;
+            }
+            
+            var _vic_is_ally = false;
+            if (_vic.object_index == obj_jogador) _vic_is_ally = true;
+            else if (variable_instance_exists(_vic, "is_ally") && _vic.is_ally) _vic_is_ally = true;
+            
+            if (owner != _vic && _owner_is_ally == _vic_is_ally) {
+                continue; // Aliado não bate em aliado, inimigo não bate em inimigo
+            }
+            // --------------------------
+            
             // Cálculo de Elemento
             var _def_type = variable_instance_exists(_vic, "type_1") ? _vic.type_1 : "normal";
             var _mult = get_type_effectiveness(attack_data.element, _def_type);
@@ -88,11 +111,26 @@ for (var i = 0; i < _count; i++) {
             if (attack_data.effect == "stun") {
                 // Implementar lógica de stun no objeto jogador/monstro se quiser
             }
+            if (attack_data.effect == "capture") {
+                // Roda a matemática da captura e recebe true/false
+                var _cap_result = capture_logic(_vic);
+                
+                // Transforma o projétil num texto flutuante
+                is_capture_result = true;
+                capture_msg = _cap_result ? "CAPTURADO!" : "ESCAPOU!";
+                capture_color = _cap_result ? c_lime : c_red;
+                
+                speed = 0;
+                direction = 0;
+                attack_data.proj_speed = 0; // Para parar totalmente
+                life_timer = 0; // Reinicia para controlar sumiço do texto
+                break; // Sai do loop
+            }
             
             ds_list_add(hit_list, _vic);
             
             // Se não for perfurante ("pierce") nem área persistente, destroi ao bater
-            if (attack_data.shape == "circle" && attack_data.effect != "pierce") {
+            if (attack_data.shape == "circle" && attack_data.effect != "pierce" && attack_data.effect != "capture") {
                 instance_destroy();
                 break; 
             }

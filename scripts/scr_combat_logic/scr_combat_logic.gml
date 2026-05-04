@@ -182,3 +182,200 @@ global.attack_database = {
         ]
     }
 };
+
+// ============================================================================
+// SISTEMAS CORE (DATA-DRIVEN)
+// Contém: Leveling, Party, Box, Database de Monstros e Sistema de Captura
+// ============================================================================
+
+// --- Variáveis Globais do Jogador ---
+global.player_level = 1;
+global.player_max_level = 6;
+global.party = []; // Array de referências de struct de monstros. Limite: player_level
+global.box = [];   // Armazém de monstros capturados
+global.capture_pending = false; // Flag para UI lidar com party cheia
+global.capture_pending_monster = undefined;
+
+// --- GERENCIAMENTO DE EQUIPE ---
+
+/**
+ * @function party_add_monster(monster_data)
+ * @description Tenta adicionar o monstro na party com base no level do jogador.
+ * @param {Struct} _monster_data
+ * @returns {String} "added", "box", ou "pending"
+ */
+function party_add_monster(_monster_data) {
+    // Clona o struct para não compartilhar a mesma instância de memória
+    var _new_monster = variable_clone(_monster_data);
+    
+    if (array_length(global.party) < global.player_level) {
+        array_push(global.party, _new_monster);
+        show_debug_message("Monstro adicionado a equipe!");
+        return "added";
+    } else {
+        // Opção do jogador quando capturar acima do limite:
+        // Enviar pra Box, Trocar, ou Party Perigosa
+        global.capture_pending_monster = _new_monster;
+        global.capture_pending = true;
+        show_debug_message("Equipe cheia. Aguardando escolha do jogador...");
+        return "pending";
+    }
+}
+
+/**
+ * @function party_add_dangerous(monster_data)
+ * @description Força a entrada na equipe, causando uma "Party Perigosa".
+ */
+function party_add_dangerous(_monster_data) {
+    array_push(global.party, _monster_data);
+    show_debug_message("ATENÇÃO: Monstro adicionado em PARTY PERIGOSA! Pode se rebelar!");
+}
+
+/**
+ * @function box_add_monster(monster_data)
+ */
+function box_add_monster(_monster_data) {
+    array_push(global.box, _monster_data);
+    show_debug_message("Monstro enviado para a BOX com sucesso.");
+}
+
+// --- BANCO DE DADOS DE MONSTROS ---
+
+// --- SISTEMA DE PERSONALIDADE E HUMOR ---
+global.moods_db = [
+    "Feliz", "Triste", "Agressivo", "Medroso", "Preguiçoso",
+    "Eufórico", "Faminto", "Cansado", "Focado", "Confuso",
+    "Irritado", "Calmo", "Ansioso", "Brincalhão"
+];
+
+global.personalities_db = [
+    "Corajoso", "Covarde", "Leal", "Teimoso", "Curioso",
+    "Protetor", "Caçador", "Gentil", "Malicioso", "Sábio",
+    "Impulsivo", "Calculista", "Desastrado", "Estrategista", "Arrogante",
+    "Tímido", "Feroz", "Dócil", "Vingativo", "Piedoso",
+    "Ganancioso", "Altruísta", "Desconfiado", "Ingênuo", "Vaidoso",
+    "Estoico", "Dramático", "Solitário", "Sociável", "Aventureiro",
+    "Cauteloso", "Apressado", "Meticuloso", "Desleixado", "Focado",
+    "Distraído", "Passivo", "Dominante", "Submisso", "Rebelde",
+    "Leal", "Traiçoeiro", "Otimista", "Pessimista", "Realista",
+    "Sonhador", "Competitivo", "Pacifista", "Sádico", "Masoca"
+];
+
+/**
+ * @function monster_update_stats(monster_data)
+ * @description Atualiza os status escalonando pelo nível (1 a 100)
+ */
+function monster_update_stats(_data) {
+    var _lv = _data.level;
+    // Exemplo de escala: a cada level ganha 10% do status base
+    _data.max_hp = _data.base_hp + (_data.base_hp * (_lv - 1) * 0.1);
+    _data.atk = _data.base_atk + (_data.base_atk * (_lv - 1) * 0.1);
+    _data.spd = _data.base_spd + ((_lv - 1) * 0.01);
+    
+    if (_data.hp > _data.max_hp) _data.hp = _data.max_hp;
+}
+
+/**
+ * @function create_monster_data(name, element, max_hp, atk, spd, capture_rate, base_xp) constructor
+ * @description Construtor principal para os monstros.
+ */
+function create_monster_data(_name, _element, _max_hp, _atk, _spd, _capture_rate, _base_xp) constructor {
+    name = _name;
+    element = _element;
+    
+    base_hp = _max_hp;
+    base_atk = _atk;
+    base_spd = _spd;
+    
+    max_hp = base_hp;
+    hp = max_hp;
+    atk = base_atk;
+    spd = base_spd;
+    
+    capture_rate = _capture_rate; // 0.0 a 1.0
+    base_xp = _base_xp;
+    
+    level = 1; // 1 a 100
+    current_xp = 0;
+    
+    // Humores e Personalidades únicos por instância
+    mood = global.moods_db[irandom(array_length(global.moods_db)-1)];
+    personality = global.personalities_db[irandom(array_length(global.personalities_db)-1)];
+    
+    // Controle de Invocação
+    is_summoned = false;
+    summon_id = noone;
+
+    
+    // Liga os ataques ao banco de ataques
+    var _db = variable_struct_get(global.attack_database, _element);
+    if (_db != undefined) {
+        basic_atk = _db.basics[0];
+        special_atk = _db.specials[0];
+    } else {
+        basic_atk = global.attack_database.normal.basics[0];
+        special_atk = global.attack_database.normal.specials[0];
+    }
+}
+
+global.monster_db = {
+    orc_teste: new create_monster_data("Orc Teste", "sombra", 50, 10, 1.2, 0.5, 10),
+    slime_fogo: new create_monster_data("Slime Ignis", "fogo", 60, 12, 1.5, 0.7, 15),
+    pombo_vento: new create_monster_data("Pombo Cinza", "normal", 40, 8, 2.0, 0.9, 8)
+};
+
+// --- SISTEMA DE CAPTURA ---
+
+/**
+ * @function capture_logic(monster_inst)
+ * @description Tenta capturar o monstro alvo aplicando a fórmula matemática de chance, baseada em nível e vida.
+ * @param {Id.Instance} _monster_inst A instância do monstro no mapa.
+ * @returns {Bool} true se capturado, false caso contrário.
+ */
+function capture_logic(_monster_inst) {
+    if (!instance_exists(_monster_inst)) return false;
+    if (!variable_instance_exists(_monster_inst, "monster_data")) {
+        show_debug_message("Este monstro não possui dados (não data-driven).");
+        return false;
+    }
+    
+    var _data = _monster_inst.monster_data;
+    
+    // 1. FATOR DE FORÇA (Player Level vs Monster Stats)
+    var _player_strength = global.player_level * 20; 
+    var _monster_strength = (_data.max_hp * 0.5) + _data.atk;
+    
+    // Força relativa: Se o player for mais forte, o fator é > 1.0 (ajuda na captura)
+    var _strength_factor = _player_strength / max(1, _monster_strength);
+    
+    // 2. FATOR DE HP (Quanto menos vida o monstro tem, mais fácil)
+    var _hp_factor = 1.0 - (_monster_inst.hp / _monster_inst.max_hp);
+    
+    // 3. CHANCE FINAL
+    var _chance = _data.capture_rate * _hp_factor * _strength_factor;
+    
+    // Regras Extremas:
+    // Mínimo de 2% de chance.
+    // Se o HP estiver cheio, a chance é fixa em 1% (quase impossível sem bater).
+    if (_hp_factor <= 0) _chance = 0.01;
+    _chance = clamp(_chance, 0.02, 1.0);
+    
+    var _roll = random(1.0);
+    
+    show_debug_message("=== TENTATIVA DE CAPTURA ===");
+    show_debug_message("Força Player: " + string(_player_strength) + " | Força Monstro: " + string(_monster_strength));
+    show_debug_message("Chance Final: " + string(_chance*100) + "% | Dado(Sorte): " + string(_roll*100));
+    
+    if (_roll <= _chance) {
+        // Atualiza a struct com a vida do momento
+        _data.hp = _monster_inst.hp;
+        
+        party_add_monster(_data);
+        
+        // Efeitos de captura com os assets que o game já possui (se aplicável)
+        instance_destroy(_monster_inst);
+        return true;
+    } else {
+        return false;
+    }
+}

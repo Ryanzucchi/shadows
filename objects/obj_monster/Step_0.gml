@@ -1,5 +1,23 @@
-var _player = instance_nearest(x, y, obj_jogador);
-var _dist = point_distance(x, y, _player.x, _player.y);
+// Variável de Aliado
+var _is_ally = variable_instance_exists(id, "is_ally") ? is_ally : false;
+
+// 1. Descobrir Alvo Principal usando módulo de IA
+var _target = ai_find_target(_is_ally, id);
+var _dist = (_target != noone) ? point_distance(x, y, _target.x, _target.y) : 999999;
+var _player_inst = instance_nearest(x, y, obj_jogador);
+
+// 2. Aplicar Modificadores de Personalidade e Humor
+var _mods = ai_apply_modifiers(id, spd, aggro_range);
+var _final_spd = _mods.final_spd;
+var _final_aggro = _mods.final_aggro;
+
+// 3. Obter o Alvo de Movimentação Real (Posicionamento Estratégico)
+var _move_target = ai_get_movement_target(id, _target, _player_inst, _is_ally);
+var _move_x = _move_target.x;
+var _move_y = _move_target.y;
+if (_move_target.aggro != undefined) {
+    _final_aggro = _move_target.aggro;
+}
 
 // Cooldown
 if (attack_cooldown > 0) attack_cooldown--;
@@ -9,49 +27,57 @@ if (debug_freeze) exit;
 
 switch (state) {
     case MO_STATE.IDLE:
-        if (_dist < aggro_range) state = MO_STATE.CHASE;
+        var _d_to_move = point_distance(x, y, _move_x, _move_y);
+        if (_d_to_move > _final_aggro) state = MO_STATE.CHASE;
         break;
 
     case MO_STATE.CHASE:
-        // Define qual ataque usar (Simples IA: tenta especial, senão básico)
         var _chosen = undefined;
         
-        // Se especial pronto e no range
-        if (attack_cooldown <= 0 && _dist <= special_atk.range) {
-            _chosen = special_atk;
-        } 
-        // Se básico pronto e no range (e especial em CD ou fora de range)
-        else if (attack_cooldown <= 0 && _dist <= basic_atk.range) {
-            _chosen = basic_atk;
+        // Aliados nunca atacam o mestre
+        var _can_attack = true;
+        if (_is_ally && _target.object_index == obj_jogador) _can_attack = false;
+        
+        if (_can_attack) {
+            // Distância para o alvo do ataque real (_target) e não _move_x
+            var _dist_to_enemy = point_distance(x, y, _target.x, _target.y);
+            if (attack_cooldown <= 0 && _dist_to_enemy <= special_atk.range) {
+                _chosen = special_atk;
+            } else if (attack_cooldown <= 0 && _dist_to_enemy <= basic_atk.range) {
+                _chosen = basic_atk;
+            }
         }
         
-        // Tratamento especial para ataques "self" (proximity) e "area"
         if (_chosen != undefined) {
-            // Se for ataque de área global (range 0) ou self, atira
             if (_chosen.shape == "self" || _chosen.shape == "area") {
-                if (_dist <= 150) { // Range fixo de aggro para melee/self
+                if (_dist_to_enemy <= 150) { 
                     current_attack = _chosen;
                     state = MO_STATE.CHANNELING;
                     channel_timer = _chosen.channel_time;
-                    target_x = _player.x;
-                    target_y = _player.y;
+                    target_x = _target.x;
+                    target_y = _target.y;
                 } else {
-                    mp_potential_step(_player.x, _player.y, spd, false);
+                    mp_potential_step(_move_x, _move_y, _final_spd, false);
                 }
-            }
-            else {
-                // Ataques de projétil/linha
+            } else {
                 current_attack = _chosen;
                 state = MO_STATE.CHANNELING;
                 channel_timer = _chosen.channel_time;
-                target_x = _player.x;
-                target_y = _player.y;
+                target_x = _target.x;
+                target_y = _target.y;
             }
         } 
         else {
-            // Move-se se não estiver atacando
-            if (_dist > aggro_range * 1.5) state = MO_STATE.IDLE;
-            else mp_potential_step(_player.x, _player.y, spd, false);
+            // Movimentação
+            var _d_to_move = point_distance(x, y, _move_x, _move_y);
+            
+            if (_is_ally && _target.object_index == obj_jogador && _d_to_move < 50) {
+                // Chegou no mestre, fica IDLE
+                state = MO_STATE.IDLE;
+            } else {
+                if (!_is_ally && _dist > _final_aggro * 1.5) state = MO_STATE.IDLE;
+                else mp_potential_step(_move_x, _move_y, _final_spd, false);
+            }
         }
         break;
 
@@ -72,7 +98,13 @@ switch (state) {
         var _s = instance_create_layer(x, y, "Instances", obj_skillshot);
         _s.attack_data = current_attack;
         _s.owner = id;
-        _s.target_type = obj_jogador;
+        
+        // Define alvo do projétil baseado em se é aliado ou não
+        if (_is_ally) _s.target_type = obj_monster; // Aliados batem em monstros inimigos
+        else {
+            // Inimigo bate em quem ele focou (player ou aliado)
+            _s.target_type = _target.object_index;
+        }
         
         // Configura posição e movimento
         if (current_attack.shape == "self") {

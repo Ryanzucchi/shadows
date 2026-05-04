@@ -1,5 +1,15 @@
 if (attack_data == undefined) exit;
 
+// --- DESENHO DO TEXTO DE CAPTURA ---
+if (variable_instance_exists(id, "is_capture_result") && is_capture_result) {
+    draw_set_halign(fa_center);
+    draw_set_color(capture_color);
+    draw_text(x, y, capture_msg);
+    draw_set_halign(fa_left);
+    draw_set_color(c_white);
+    exit;
+}
+
 var _shape = attack_data.shape;
 var _elem = attack_data.element;
 var _w = attack_data.width;
@@ -227,6 +237,22 @@ switch (_elem) {
         }
         break;
         
+    // --- 11. CAPTURE (Orbe de Captura) ---
+    case "capture":
+        draw_set_color(attack_data.color);
+        draw_circle(x, y, _w, false);
+        draw_set_color(c_white);
+        draw_circle(x, y, _w, true);
+        
+        var _osc = sin(_time * 2) * 3;
+        draw_set_alpha(0.5);
+        draw_circle(x, y, _w + 2 + _osc, true);
+        
+        // Rastro piscante
+        draw_set_color(choose(c_fuchsia, c_white));
+        draw_circle(x - lengthdir_x(8, direction), y - lengthdir_y(8, direction), _w*0.5, false);
+        break;
+
     // --- PADRÃO DE SEGURANÇA ---
     default:
         draw_set_color(c_white);

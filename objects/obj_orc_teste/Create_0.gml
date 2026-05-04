@@ -1,15 +1,16 @@
-// --- Status Básicos ---
-hp = 50;
-max_hp = 50;
-spd = 1.2;
-xp_value = 10;
+// --- Inicializa com Dados (Data-Driven) ---
+// Clona a base do banco de dados para que este orc seja único
+monster_data = variable_clone(global.monster_db.orc_teste);
 
-// --- Carrega Dados do Banco ---
-var _db_sombra = global.attack_database.sombra;
+// Atalhos locais para compatibilidade e performance
+hp = monster_data.hp;
+max_hp = monster_data.max_hp;
+spd = monster_data.spd;
+xp_value = monster_data.base_xp;
 
-// Carrega os ataques corretamente
-basic_atk = _db_sombra.basics[0];   // Orbe Sombrio
-special_atk = _db_sombra.specials[0]; // Vazio (ou outro especial)
+basic_atk = monster_data.basic_atk;
+special_atk = monster_data.special_atk;
+type_1 = monster_data.element;
 
 // --- Timers e Controle ---
 state = MO_STATE.IDLE; // <--- MUDANÇA: Usar MO_STATE, não "IDLE"

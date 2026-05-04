@@ -204,3 +204,133 @@ if (mouse_check_button_pressed(mb_left)) {
     _proj.velocity_x = lengthdir_x(_ataque_escolhido.proj_speed, _dir);
     _proj.velocity_y = lengthdir_y(_ataque_escolhido.proj_speed, _dir);
 }
+
+// =========================================================
+// 4. SISTEMA DE CAPTURA
+// =========================================================
+if (keyboard_check_pressed(ord("C"))) {
+    // Acha o monstro mais próximo num raio grande (300 pixels) para atirar
+    var _nearest = collision_circle(x, y, 300, obj_monster, false, true);
+    if (_nearest == noone) {
+        _nearest = collision_circle(x, y, 300, obj_orc_teste, false, true);
+    }
+    
+    if (_nearest != noone) {
+        // Atira uma orbe visual usando obj_skillshot
+        var _proj = instance_create_layer(x, y, "Instances", obj_skillshot);
+        
+        var _cap_data = {
+            name: "Orbe de Captura",
+            element: "sombra", // Usa a estética de sombra (roxo)
+            damage: 0,
+            shape: "circle",
+            range: 350,
+            proj_speed: 6,
+            color: c_fuchsia,
+            width: 15,
+            effect: "capture" // Novo efeito de captura!
+        };
+        
+        _proj.attack_data = _cap_data;
+        _proj.owner = id;
+        _proj.target_type = _nearest.object_index;
+        
+        var _dir = point_direction(x, y, _nearest.x, _nearest.y);
+        _proj.direction = _dir;
+        _proj.image_angle = _dir;
+        _proj.velocity_x = lengthdir_x(_cap_data.proj_speed, _dir);
+        _proj.velocity_y = lengthdir_y(_cap_data.proj_speed, _dir);
+    }
+}
+
+// =========================================================
+// 5. INVOCAR / RECOLHER MONSTROS (Teclas 1 a 6)
+// =========================================================
+if (!global.capture_pending) {
+    for (var i = 1; i <= 6; i++) {
+        // Verifica tanto o número acima das letras quanto o numpad
+        var _key_pressed = keyboard_check_pressed(ord(string(i))) || keyboard_check_pressed(vk_numpad0 + i);
+        
+        if (_key_pressed) {
+            var _idx = i - 1;
+            if (_idx < array_length(global.party)) {
+                var _m_data = global.party[_idx];
+                
+                // Garantia de segurança (caso o monstro seja antigo no save)
+                if (!variable_struct_exists(_m_data, "is_summoned")) _m_data.is_summoned = false;
+                if (!variable_struct_exists(_m_data, "summon_id")) _m_data.summon_id = noone;
+                
+                if (_m_data.is_summoned) {
+                    // Recolhe
+                    if (instance_exists(_m_data.summon_id)) {
+                        instance_destroy(_m_data.summon_id);
+                    }
+                    _m_data.is_summoned = false;
+                    _m_data.summon_id = noone;
+                    show_debug_message("Recolheu: " + _m_data.name);
+                } else {
+                    // Invoca
+                    var _spawn_x = x + random_range(-40, 40);
+                    var _spawn_y = y + random_range(-40, 40);
+                    var _inst = instance_create_layer(_spawn_x, _spawn_y, "Instances", obj_monster);
+                    
+                    // Vincula os dados
+                    _inst.monster_data = _m_data;
+                    _inst.hp = _m_data.hp;
+                    _inst.max_hp = _m_data.max_hp;
+                    _inst.spd = _m_data.spd;
+                    _inst.type_1 = _m_data.element;
+                    _inst.basic_atk = _m_data.basic_atk;
+                    _inst.special_atk = _m_data.special_atk;
+                    
+                    // Flags de Aliado
+                    _inst.is_ally = true;
+                    _m_data.is_summoned = true;
+                    _m_data.summon_id = _inst;
+                    
+                    // Garantia para IA (antigos)
+                    if (!variable_struct_exists(_m_data, "mood")) _m_data.mood = "Calmo";
+                    if (!variable_struct_exists(_m_data, "personality")) _m_data.personality = "Leal";
+                    
+                    show_debug_message("Invocou: " + _m_data.name + " (" + _m_data.mood + " / " + _m_data.personality + ")");
+                }
+            }
+        }
+    }
+}
+
+// =========================================================
+// 5. TESTE DE ESCOLHA (Simulação de UI da Party)
+// =========================================================
+if (global.capture_pending) {
+    // Simula botões (1 para Party Perigosa, 2 para Box)
+    if (keyboard_check_pressed(ord("1"))) {
+        party_add_dangerous(global.capture_pending_monster);
+        global.capture_pending = false;
+        global.capture_pending_monster = undefined;
+    } else if (keyboard_check_pressed(ord("2"))) {
+        box_add_monster(global.capture_pending_monster);
+        global.capture_pending = false;
+        global.capture_pending_monster = undefined;
+    }
+}
+
+// =========================================================
+// 6. SISTEMA DE REBELIÃO (PARTY PERIGOSA)
+// =========================================================
+// Se tivermos mais monstros do que o nosso nível, há chance de rebelião ao andar.
+if (array_length(global.party) > global.player_level && (hspd != 0 || vspd != 0)) {
+    // Uma chance bem pequena por frame (ex: 1 em 10000)
+    if (irandom(10000) == 1) {
+        show_debug_message("!!! UM MONSTRO SE REBELOU DA SUA PARTY PERIGOSA !!!");
+        var _rebel_idx = irandom(array_length(global.party) - 1);
+        var _rebel_data = global.party[_rebel_idx];
+        
+        // Remove da party
+        array_delete(global.party, _rebel_idx, 1);
+        
+        // Cria ele no mapa inimigo
+        var _inst = instance_create_layer(x + irandom_range(-50, 50), y + irandom_range(-50, 50), "Instances", obj_monster);
+        _inst.monster_data = _rebel_data;
+    }
+}

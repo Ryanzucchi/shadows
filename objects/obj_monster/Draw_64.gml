@@ -2,97 +2,130 @@
 if (keyboard_check_pressed(vk_f1)) debug_open = !debug_open;
 
 if (debug_open) {
-    var _mx = 50;
-    var _my = 50;
+    var _gui_w = display_get_gui_width();
+    var _gui_h = display_get_gui_height();
+    
+    var _mx = _gui_w / 2 - 200;
+    var _my = _gui_h / 2 - 250;
     
     // Fundo
-    draw_set_alpha(0.8);
+    draw_set_alpha(0.85);
     draw_set_color(c_black);
-    draw_rectangle(_mx, _my, _mx + 400, _my + 500, false);
+    draw_roundrect(_mx, _my, _mx + 400, _my + 500, false);
     draw_set_alpha(1);
+    
+    // Borda
+    draw_set_color(c_aqua);
+    draw_roundrect(_mx, _my, _mx + 400, _my + 500, true);
+    
     draw_set_color(c_white);
+    draw_set_halign(fa_center);
+    draw_text(_mx + 200, _my + 15, "--- LABORATÓRIO DE TESTES ---");
     
-    draw_text(_mx + 10, _my + 10, "--- MONSTER DEBUG (V2) ---");
-    draw_text(_mx + 10, _my + 30, "Setas: Navegar | Enter: Trocar Especial | Espaço: Trocar Básico");
-    draw_text(_mx + 10, _my + 50, "F: Congelar/Descongelar Monstro");
+    draw_set_halign(fa_left);
+    draw_set_color(c_silver);
+    draw_text(_mx + 20, _my + 35, "Setas Cima/Baixo : Escolher Monstro Base");
+    draw_text(_mx + 20, _my + 50, "ENTER            : Aplicar Monstro Atual");
+    draw_text(_mx + 20, _my + 65, "HOME / END       : Trocar Atk BÁSICO");
+    draw_text(_mx + 20, _my + 80, "PgUP / PgDOWN    : Trocar Atk ESPECIAL");
+    draw_text(_mx + 20, _my + 95, "F                : Congelar / Descongelar IA");
     
-    // Controles
-    if (keyboard_check_pressed(vk_down)) debug_selected_type_idx++;
-    if (keyboard_check_pressed(vk_up)) debug_selected_type_idx--;
-    if (keyboard_check_pressed(vk_right)) debug_selected_atk_idx++;
-    if (keyboard_check_pressed(vk_left)) debug_selected_atk_idx--;
+    // Inicializa lista plana de ataques se não existir
+    if (!variable_instance_exists(id, "debug_all_attacks")) {
+        debug_all_attacks = [];
+        var _elements = variable_struct_get_names(global.attack_database);
+        for (var e = 0; e < array_length(_elements); e++) {
+            var _cat = variable_struct_get(global.attack_database, _elements[e]);
+            for (var b = 0; b < array_length(_cat.basics); b++) array_push(debug_all_attacks, _cat.basics[b]);
+            for (var s = 0; s < array_length(_cat.specials); s++) array_push(debug_all_attacks, _cat.specials[s]);
+        }
+        debug_atk_b_idx = 0;
+        debug_atk_s_idx = 0;
+    }
+    
+    // Controles de Congelamento
     if (keyboard_check_pressed(ord("F"))) debug_freeze = !debug_freeze;
     
-    // Wrap (Ciclo infinito nas listas)
-    var _total_types = array_length(debug_types_list);
-    if (debug_selected_type_idx < 0) debug_selected_type_idx = _total_types - 1;
-    if (debug_selected_type_idx >= _total_types) debug_selected_type_idx = 0;
+    // Controles de Ataques do Monstro VIVO (Muda Imediatamente)
+    var _total_atks = array_length(debug_all_attacks);
+    if (keyboard_check_pressed(vk_home)) { debug_atk_b_idx--; if (debug_atk_b_idx < 0) debug_atk_b_idx = _total_atks-1; basic_atk = debug_all_attacks[debug_atk_b_idx]; }
+    if (keyboard_check_pressed(vk_end)) { debug_atk_b_idx++; if (debug_atk_b_idx >= _total_atks) debug_atk_b_idx = 0; basic_atk = debug_all_attacks[debug_atk_b_idx]; }
     
-    if (debug_selected_atk_idx < 0) debug_selected_atk_idx = 4; // Total de 5 ataques (0-4)
-    if (debug_selected_atk_idx > 4) debug_selected_atk_idx = 0;
+    if (keyboard_check_pressed(vk_pageup)) { debug_atk_s_idx--; if (debug_atk_s_idx < 0) debug_atk_s_idx = _total_atks-1; special_atk = debug_all_attacks[debug_atk_s_idx]; }
+    if (keyboard_check_pressed(vk_pagedown)) { debug_atk_s_idx++; if (debug_atk_s_idx >= _total_atks) debug_atk_s_idx = 0; special_atk = debug_all_attacks[debug_atk_s_idx]; }
+
     
-    // --- CORREÇÃO: Monta uma lista temporária unificada ---
-    var _s_type = debug_types_list[debug_selected_type_idx];
-    var _type_data = variable_struct_get(global.attack_database, _s_type);
+    // Obtém as chaves do banco de dados para listar
+    var _keys = variable_struct_get_names(global.monster_db);
+    var _total_monsters = array_length(_keys);
     
-    // Cria array temporário juntando [Básicos] + [Especiais]
-    var _display_list = [];
+    if (keyboard_check_pressed(vk_down)) debug_selected_type_idx++;
+    if (keyboard_check_pressed(vk_up)) debug_selected_type_idx--;
     
-    // Adiciona os 2 básicos (índices 0 e 1)
-    array_push(_display_list, _type_data.basics[0]);
-    array_push(_display_list, _type_data.basics[1]);
+    // Wrap Monstros
+    if (debug_selected_type_idx < 0) debug_selected_type_idx = _total_monsters - 1;
+    if (debug_selected_type_idx >= _total_monsters) debug_selected_type_idx = 0;
     
-    // Adiciona os 3 especiais (índices 2, 3 e 4)
-    array_push(_display_list, _type_data.specials[0]);
-    array_push(_display_list, _type_data.specials[1]);
-    array_push(_display_list, _type_data.specials[2]);
+    // Lista de Monstros
+    var _list_y = _my + 130;
+    draw_set_color(c_aqua);
+    draw_text(_mx + 20, _list_y - 20, "MONSTROS DISPONÍVEIS:");
     
-    // Seleciona o ataque da lista unificada
-    var _s_atk = _display_list[debug_selected_atk_idx];
-    
-    // Exibe Tipo Atual
-    draw_text(_mx + 10, _my + 80, "TIPO SELECIONADO: < " + string_upper(_s_type) + " >");
-    
-    // Lista os 5 ataques
-    for (var i = 0; i < 5; i++) {
-        var _col = c_gray;
-        if (i == debug_selected_atk_idx) _col = c_yellow;
-        draw_set_color(_col);
+    for (var i = 0; i < _total_monsters; i++) {
+        var _k = _keys[i];
+        var _m_data = variable_struct_get(global.monster_db, _k);
         
-        var _a = _display_list[i];
-        var _prefix = (i < 2) ? "[BAS] " : "[ESP] "; // Marca visualmente se é básico ou especial
-        
-        draw_text(_mx + 20, _my + 110 + (i * 20), _prefix + _a.name);
+        if (i == debug_selected_type_idx) {
+            draw_set_color(c_yellow);
+            draw_text(_mx + 20, _list_y + (i * 20), ">> " + _m_data.name + " (" + _m_data.element + ")");
+        } else {
+            draw_set_color(c_white);
+            draw_text(_mx + 40, _list_y + (i * 20), _m_data.name);
+        }
     }
+    
+    // Preview do Monstro Selecionado
+    var _sel_key = _keys[debug_selected_type_idx];
+    var _sel_data = variable_struct_get(global.monster_db, _sel_key);
+    
+    var _preview_y = _my + 300;
+    draw_set_color(c_lime);
+    draw_text(_mx + 20, _preview_y, "PREVIEW DOS STATUS:");
     draw_set_color(c_white);
+    draw_text(_mx + 20, _preview_y + 20, "Elemento : " + string_upper(_sel_data.element));
+    draw_text(_mx + 20, _preview_y + 40, "HP Max   : " + string(_sel_data.max_hp));
+    draw_text(_mx + 20, _preview_y + 60, "Velocid. : " + string(_sel_data.spd));
+    draw_text(_mx + 20, _preview_y + 80, "Atk Básico: " + _sel_data.basic_atk.name);
+    draw_text(_mx + 20, _preview_y + 100,"Atk Espec.: " + _sel_data.special_atk.name);
     
-    // Info do Ataque Selecionado
-    draw_text(_mx + 10, _my + 230, "Detalhes:");
-    draw_text(_mx + 20, _my + 250, "Dano: " + string(_s_atk.damage));
-    draw_text(_mx + 20, _my + 270, "Forma: " + _s_atk.shape);
-    draw_text(_mx + 20, _my + 290, "Efeito: " + _s_atk.effect);
-    
-    // Aplicação das Mudanças
+    // Aplicação
     if (keyboard_check_pressed(vk_enter)) {
-        // Se apertar Enter, define como ESPECIAL
-        // (Nota: permite definir um ataque básico como especial se quiser testar, mas o ideal é seguir a categoria)
-        special_atk = _s_atk;
-        type_1 = _s_type;
-        special_cooldown = 0; // Reseta CD para testar
-        show_debug_message("Especial alterado para: " + _s_atk.name);
-    }
-    if (keyboard_check_pressed(vk_space)) {
-        // Se apertar Espaço, define como BÁSICO
-        basic_atk = _s_atk;
-        type_1 = _s_type;
+        // Aplica o monstro no objeto atual
+        monster_data = variable_clone(_sel_data);
+        
+        hp = monster_data.hp;
+        max_hp = monster_data.max_hp;
+        spd = monster_data.spd;
+        type_1 = monster_data.element; 
+        
+        basic_atk = monster_data.basic_atk;
+        special_atk = monster_data.special_atk;
+        
         attack_cooldown = 0;
-        show_debug_message("Básico alterado para: " + _s_atk.name);
+        channel_timer = 0;
+        state = MO_STATE.IDLE;
+        
+        show_debug_message("Monstro atualizado para: " + monster_data.name);
     }
     
-    // Status Atual do Monstro
-    draw_text(_mx + 10, _my + 350, "--- MONSTRO ATUAL ---");
-    draw_text(_mx + 10, _my + 370, "Básico: " + basic_atk.name);
-    draw_text(_mx + 10, _my + 390, "Especial: " + special_atk.name);
-    draw_text(_mx + 10, _my + 410, "CD Especial: " + string(special_cooldown));
-    draw_text(_mx + 10, _my + 430, "Congelado: " + string(debug_freeze));
+    // Status do Monstro Vivo
+    draw_set_color(c_orange);
+    draw_text(_mx + 20, _my + 420, "--- MONSTRO ATUAL DA TELA ---");
+    draw_set_color(c_white);
+    if (variable_instance_exists(id, "monster_data") && monster_data != undefined) {
+        draw_text(_mx + 20, _my + 440, "Nome: " + monster_data.name + " | HP: " + string(ceil(hp)) + "/" + string(max_hp));
+        draw_set_color(c_yellow);
+        draw_text(_mx + 20, _my + 460, "Atk Base: " + basic_atk.name);
+        draw_text(_mx + 20, _my + 480, "Atk Esp: " + special_atk.name);
+    }
 }
