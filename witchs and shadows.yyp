@@ -31,7 +31,7 @@
   "isEcma":false,
   "LibraryEmitters":[],
   "MetaData":{
-    "IDEVersion":"2024.14.1.210",
+    "IDEVersion":"2024.14.4.222",
   },
   "name":"witchs and shadows",
   "resources":[
@@ -46,6 +46,7 @@
     {"id":{"name":"scr_combat_logic","path":"scripts/scr_combat_logic/scr_combat_logic.yy",},},
     {"id":{"name":"scr_player_states","path":"scripts/scr_player_states/scr_player_states.yy",},},
     {"id":{"name":"Decorations","path":"sprites/Decorations/Decorations.yy",},},
+    {"id":{"name":"MainLev2_0","path":"sprites/MainLev2_0/MainLev2_0.yy",},},
     {"id":{"name":"spr_dash_down","path":"sprites/spr_dash_down/spr_dash_down.yy",},},
     {"id":{"name":"spr_dash_dust_down","path":"sprites/spr_dash_dust_down/spr_dash_dust_down.yy",},},
     {"id":{"name":"spr_dash_dust_left_down","path":"sprites/spr_dash_dust_left_down/spr_dash_dust_left_down.yy",},},
@@ -97,6 +98,8 @@
     {"id":{"name":"spr_walk_right","path":"sprites/spr_walk_right/spr_walk_right.yy",},},
     {"id":{"name":"spr_walk_up","path":"sprites/spr_walk_up/spr_walk_up.yy",},},
     {"id":{"name":"sprdeath_normal_left_up","path":"sprites/sprdeath_normal_left_up/sprdeath_normal_left_up.yy",},},
+    {"id":{"name":"TileSet1","path":"tilesets/TileSet1/TileSet1.yy",},},
+    {"id":{"name":"TileSet2","path":"tilesets/TileSet2/TileSet2.yy",},},
   ],
   "resourceType":"GMProject",
   "resourceVersion":"2.0",
