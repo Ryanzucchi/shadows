@@ -279,9 +279,11 @@ function monster_update_stats(_data) {
  * @function create_monster_data(name, element, max_hp, atk, spd, capture_rate, base_xp) constructor
  * @description Construtor principal para os monstros.
  */
-function create_monster_data(_name, _element, _max_hp, _atk, _spd, _capture_rate, _base_xp) constructor {
+function create_monster_data(_name, _element_1, _element_2, _max_hp, _atk, _spd, _capture_rate, _base_xp, _basic_atk = undefined, _special_atk = undefined) constructor {
     name = _name;
-    element = _element;
+    element = _element_1; // Compatibilidade com código legado
+    element_1 = _element_1;
+    element_2 = _element_2;
     
     base_hp = _max_hp;
     base_atk = _atk;
@@ -306,38 +308,95 @@ function create_monster_data(_name, _element, _max_hp, _atk, _spd, _capture_rate
     is_summoned = false;
     summon_id = noone;
 
-    
-    // Liga os ataques ao banco de ataques
-    var _db = variable_struct_get(global.attack_database, _element);
-    if (_db != undefined) {
-        basic_atk = _db.basics[0];
-        special_atk = _db.specials[0];
+    // Liga os ataques ao banco de ataques ou usa os passados por parâmetro
+    if (_basic_atk != undefined) {
+        basic_atk = _basic_atk;
     } else {
-        basic_atk = global.attack_database.normal.basics[0];
-        special_atk = global.attack_database.normal.specials[0];
+        var _db = variable_struct_get(global.attack_database, _element_1);
+        if (_db != undefined) {
+            basic_atk = _db.basics[0];
+        } else {
+            basic_atk = global.attack_database.normal.basics[0];
+        }
+    }
+    
+    if (_special_atk != undefined) {
+        special_atk = _special_atk;
+    } else {
+        var _db = variable_struct_get(global.attack_database, _element_1);
+        if (_db != undefined) {
+            special_atk = _db.specials[0];
+        } else {
+            special_atk = global.attack_database.normal.specials[0];
+        }
+    }
+
+    // Retorna todos os ataques básicos que este monstro pode aprender (baseados nos seus dois elementos)
+    get_learnable_basics = function() {
+        var _list = [];
+        
+        // Elemento 1
+        var _db1 = variable_struct_get(global.attack_database, element_1);
+        if (_db1 != undefined) {
+            for (var i = 0; i < array_length(_db1.basics); i++) {
+                array_push(_list, _db1.basics[i]);
+            }
+        }
+        
+        // Elemento 2 (se houver e for diferente)
+        if (element_2 != "nenhum" && element_2 != element_1) {
+            var _db2 = variable_struct_get(global.attack_database, element_2);
+            if (_db2 != undefined) {
+                for (var i = 0; i < array_length(_db2.basics); i++) {
+                    array_push(_list, _db2.basics[i]);
+                }
+            }
+        }
+        
+        return _list;
+    }
+    
+    // Retorna todos os ataques especiais que este monstro pode aprender (baseados nos seus dois elementos)
+    get_learnable_specials = function() {
+        var _list = [];
+        
+        // Elemento 1
+        var _db1 = variable_struct_get(global.attack_database, element_1);
+        if (_db1 != undefined) {
+            for (var i = 0; i < array_length(_db1.specials); i++) {
+                array_push(_list, _db1.specials[i]);
+            }
+        }
+        
+        // Elemento 2 (se houver e for diferente)
+        if (element_2 != "nenhum" && element_2 != element_1) {
+            var _db2 = variable_struct_get(global.attack_database, element_2);
+            if (_db2 != undefined) {
+                for (var i = 0; i < array_length(_db2.specials); i++) {
+                    array_push(_list, _db2.specials[i]);
+                }
+            }
+        }
+        
+        return _list;
     }
 }
 
 global.monster_db = {
-    orc_teste: new create_monster_data("Orc Teste", "sombra", 50, 10, 1.2, 0.5, 10),
-    slime_fogo: new create_monster_data("Slime Ignis", "fogo", 60, 12, 1.5, 0.7, 15),
-    pombo_vento: new create_monster_data("Pombo Cinza", "normal", 40, 8, 2.0, 0.9, 8)
+    orc_teste: new create_monster_data("Orc Teste", "sombra", "nenhum", 50, 10, 1.2, 0.5, 10),
+    slime_fogo: new create_monster_data("Slime Ignis", "fogo", "nenhum", 60, 12, 1.5, 0.7, 15),
+    pombo_vento: new create_monster_data("Pombo Cinza", "normal", "nenhum", 40, 8, 2.0, 0.9, 8)
 };
 
 // --- SISTEMA DE CAPTURA ---
 
 /**
- * @function capture_logic(monster_inst)
- * @description Tenta capturar o monstro alvo aplicando a fórmula matemática de chance, baseada em nível e vida.
- * @param {Id.Instance} _monster_inst A instância do monstro no mapa.
- * @returns {Bool} true se capturado, false caso contrário.
+ * @function calculate_capture_chance(monster_inst)
+ * @description Retorna a chance de captura do monstro de 0.0 a 1.0.
  */
-function capture_logic(_monster_inst) {
-    if (!instance_exists(_monster_inst)) return false;
-    if (!variable_instance_exists(_monster_inst, "monster_data")) {
-        show_debug_message("Este monstro não possui dados (não data-driven).");
-        return false;
-    }
+function calculate_capture_chance(_monster_inst) {
+    if (!instance_exists(_monster_inst)) return 0.0;
+    if (!variable_instance_exists(_monster_inst, "monster_data")) return 0.0;
     
     var _data = _monster_inst.monster_data;
     
@@ -358,12 +417,27 @@ function capture_logic(_monster_inst) {
     // Mínimo de 2% de chance.
     // Se o HP estiver cheio, a chance é fixa em 1% (quase impossível sem bater).
     if (_hp_factor <= 0) _chance = 0.01;
-    _chance = clamp(_chance, 0.02, 1.0);
+    return clamp(_chance, 0.02, 1.0);
+}
+
+/**
+ * @function capture_logic(monster_inst)
+ * @description Tenta capturar o monstro alvo aplicando a fórmula matemática de chance, baseada em nível e vida.
+ * @param {Id.Instance} _monster_inst A instância do monstro no mapa.
+ * @returns {Bool} true se capturado, false caso contrário.
+ */
+function capture_logic(_monster_inst) {
+    if (!instance_exists(_monster_inst)) return false;
+    if (!variable_instance_exists(_monster_inst, "monster_data")) {
+        show_debug_message("Este monstro não possui dados (não data-driven).");
+        return false;
+    }
     
+    var _data = _monster_inst.monster_data;
+    var _chance = calculate_capture_chance(_monster_inst);
     var _roll = random(1.0);
     
     show_debug_message("=== TENTATIVA DE CAPTURA ===");
-    show_debug_message("Força Player: " + string(_player_strength) + " | Força Monstro: " + string(_monster_strength));
     show_debug_message("Chance Final: " + string(_chance*100) + "% | Dado(Sorte): " + string(_roll*100));
     
     if (_roll <= _chance) {

@@ -42,10 +42,20 @@ if (state == MO_STATE.CHANNELING && current_attack != undefined) {
 var _pct = (hp / max_hp) * 100;
 draw_healthbar(x-20, y-35, x+20, y-30, _pct, c_black, c_red, c_green, 0, true, true);
 
-// 3. Debug Label
+// 3. Chance de Captura (Debug/HUD)
+var _cap_chance = calculate_capture_chance(id) * 100;
+draw_set_halign(fa_center);
+draw_set_font(-1);
+draw_set_color(c_fuchsia);
+draw_text_transformed(x, y-50, string_format(_cap_chance, 1, 0) + "% Captura", 0.75, 0.75, 0);
+
+// 4. Debug Label
 if (debug_open) {
     draw_set_color(c_yellow);
-    draw_text(x, y-60, "DEBUG EDIT");
-    draw_set_color(c_white);
+    draw_text(x, y-70, "DEBUG EDIT");
 }
+
+// Reset
+draw_set_color(c_white);
+draw_set_halign(fa_left);
 

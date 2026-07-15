@@ -37,6 +37,11 @@ switch(state) {
 draw_set_color(_col);
 draw_text(x, y - 65, _txt);
 
+// --- 2.1 CHANCE DE CAPTURA ---
+var _cap_chance = calculate_capture_chance(id) * 100;
+draw_set_color(c_fuchsia);
+draw_text_transformed(x, y - 115, string_format(_cap_chance, 1, 0) + "% Captura", 0.75, 0.75, 0);
+
 // --- 3. BARRA DE COOLDOWN DO ESPECIAL ---
 // Mostra uma barra azul para saber quando o especial volta
 if (special_cooldown > 0) {
