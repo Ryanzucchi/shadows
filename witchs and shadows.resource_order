@@ -23,6 +23,7 @@
     {"name":"obj_parede","order":2,"path":"objects/obj_parede/obj_parede.yy",},
     {"name":"obj_skillshot","order":6,"path":"objects/obj_skillshot/obj_skillshot.yy",},
     {"name":"scr_combat_logic","order":1,"path":"scripts/scr_combat_logic/scr_combat_logic.yy",},
+    {"name":"scr_monster_ai","order":2,"path":"scripts/scr_monster_ai/scr_monster_ai.yy",},
     {"name":"MainLev2_0","order":3,"path":"sprites/MainLev2_0/MainLev2_0.yy",},
     {"name":"spr_dash_dust_left_down","order":1,"path":"sprites/spr_dash_dust_left_down/spr_dash_dust_left_down.yy",},
     {"name":"spr_dash_dust_left_up","order":2,"path":"sprites/spr_dash_dust_left_up/spr_dash_dust_left_up.yy",},

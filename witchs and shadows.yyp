@@ -44,6 +44,7 @@
     {"id":{"name":"obj_skillshot","path":"objects/obj_skillshot/obj_skillshot.yy",},},
     {"id":{"name":"Room1","path":"rooms/Room1/Room1.yy",},},
     {"id":{"name":"scr_combat_logic","path":"scripts/scr_combat_logic/scr_combat_logic.yy",},},
+    {"id":{"name":"scr_monster_ai","path":"scripts/scr_monster_ai/scr_monster_ai.yy",},},
     {"id":{"name":"scr_player_states","path":"scripts/scr_player_states/scr_player_states.yy",},},
     {"id":{"name":"Decorations","path":"sprites/Decorations/Decorations.yy",},},
     {"id":{"name":"MainLev2_0","path":"sprites/MainLev2_0/MainLev2_0.yy",},},
