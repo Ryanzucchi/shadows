@@ -30,29 +30,38 @@ if (debug_open) {
     draw_text(_mx + 20, _my + 80, "PgUP / PgDOWN    : Trocar Atk ESPECIAL");
     draw_text(_mx + 20, _my + 95, "F                : Congelar / Descongelar IA");
     
-    // Inicializa lista plana de ataques se não existir
-    if (!variable_instance_exists(id, "debug_all_attacks")) {
-        debug_all_attacks = [];
-        var _elements = variable_struct_get_names(global.attack_database);
-        for (var e = 0; e < array_length(_elements); e++) {
-            var _cat = variable_struct_get(global.attack_database, _elements[e]);
-            for (var b = 0; b < array_length(_cat.basics); b++) array_push(debug_all_attacks, _cat.basics[b]);
-            for (var s = 0; s < array_length(_cat.specials); s++) array_push(debug_all_attacks, _cat.specials[s]);
-        }
+    // Inicializa listas de debug do monstro baseadas nos seus tipos se não existir
+    if (!variable_instance_exists(id, "debug_learnable_basics") || debug_learnable_basics == undefined) {
+        debug_learnable_basics = monster_data.get_learnable_basics();
+        debug_learnable_specials = monster_data.get_learnable_specials();
+        
+        // Acha os índices correspondentes aos ataques atuais dele
         debug_atk_b_idx = 0;
+        for (var i = 0; i < array_length(debug_learnable_basics); i++) {
+            if (debug_learnable_basics[i].name == basic_atk.name) { debug_atk_b_idx = i; break; }
+        }
+        
         debug_atk_s_idx = 0;
+        for (var i = 0; i < array_length(debug_learnable_specials); i++) {
+            if (debug_learnable_specials[i].name == special_atk.name) { debug_atk_s_idx = i; break; }
+        }
     }
     
     // Controles de Congelamento
     if (keyboard_check_pressed(ord("F"))) debug_freeze = !debug_freeze;
     
     // Controles de Ataques do Monstro VIVO (Muda Imediatamente)
-    var _total_atks = array_length(debug_all_attacks);
-    if (keyboard_check_pressed(vk_home)) { debug_atk_b_idx--; if (debug_atk_b_idx < 0) debug_atk_b_idx = _total_atks-1; basic_atk = debug_all_attacks[debug_atk_b_idx]; }
-    if (keyboard_check_pressed(vk_end)) { debug_atk_b_idx++; if (debug_atk_b_idx >= _total_atks) debug_atk_b_idx = 0; basic_atk = debug_all_attacks[debug_atk_b_idx]; }
+    var _total_basics = array_length(debug_learnable_basics);
+    if (_total_basics > 0) {
+        if (keyboard_check_pressed(vk_home)) { debug_atk_b_idx--; if (debug_atk_b_idx < 0) debug_atk_b_idx = _total_basics-1; basic_atk = debug_learnable_basics[debug_atk_b_idx]; }
+        if (keyboard_check_pressed(vk_end)) { debug_atk_b_idx++; if (debug_atk_b_idx >= _total_basics) debug_atk_b_idx = 0; basic_atk = debug_learnable_basics[debug_atk_b_idx]; }
+    }
     
-    if (keyboard_check_pressed(vk_pageup)) { debug_atk_s_idx--; if (debug_atk_s_idx < 0) debug_atk_s_idx = _total_atks-1; special_atk = debug_all_attacks[debug_atk_s_idx]; }
-    if (keyboard_check_pressed(vk_pagedown)) { debug_atk_s_idx++; if (debug_atk_s_idx >= _total_atks) debug_atk_s_idx = 0; special_atk = debug_all_attacks[debug_atk_s_idx]; }
+    var _total_specials = array_length(debug_learnable_specials);
+    if (_total_specials > 0) {
+        if (keyboard_check_pressed(vk_pageup)) { debug_atk_s_idx--; if (debug_atk_s_idx < 0) debug_atk_s_idx = _total_specials-1; special_atk = debug_learnable_specials[debug_atk_s_idx]; }
+        if (keyboard_check_pressed(vk_pagedown)) { debug_atk_s_idx++; if (debug_atk_s_idx >= _total_specials) debug_atk_s_idx = 0; special_atk = debug_learnable_specials[debug_atk_s_idx]; }
+    }
 
     
     // Obtém as chaves do banco de dados para listar
@@ -106,10 +115,15 @@ if (debug_open) {
         hp = monster_data.hp;
         max_hp = monster_data.max_hp;
         spd = monster_data.spd;
-        type_1 = monster_data.element; 
+        type_1 = monster_data.element_1; 
+        type_2 = monster_data.element_2; 
         
         basic_atk = monster_data.basic_atk;
         special_atk = monster_data.special_atk;
+        
+        // Limpa as variáveis de debug para recalcular para o novo monstro
+        debug_learnable_basics = undefined;
+        debug_learnable_specials = undefined;
         
         attack_cooldown = 0;
         channel_timer = 0;

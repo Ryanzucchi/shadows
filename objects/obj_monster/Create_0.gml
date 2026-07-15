@@ -9,8 +9,8 @@ if (!variable_instance_exists(id, "monster_data")) {
 hp = monster_data.hp;
 max_hp = monster_data.max_hp;
 spd = monster_data.spd;
-type_1 = monster_data.element; 
-type_2 = "nenhum";
+type_1 = monster_data.element_1; 
+type_2 = monster_data.element_2;
 
 // --- Combate ---
 state = MO_STATE.IDLE;

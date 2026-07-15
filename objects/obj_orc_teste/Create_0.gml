@@ -10,7 +10,8 @@ xp_value = monster_data.base_xp;
 
 basic_atk = monster_data.basic_atk;
 special_atk = monster_data.special_atk;
-type_1 = monster_data.element;
+type_1 = monster_data.element_1;
+type_2 = monster_data.element_2;
 
 // --- Timers e Controle ---
 state = MO_STATE.IDLE; // <--- MUDANÇA: Usar MO_STATE, não "IDLE"
