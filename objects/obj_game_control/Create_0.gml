@@ -48,29 +48,6 @@ set_eff(ELEMENT.SOMBRA, ELEMENT.PSIQUICO, 2.0);
 set_eff(ELEMENT.SOMBRA, ELEMENT.LUZ, 2.0);
 set_eff(ELEMENT.LUZ, ELEMENT.SOMBRA, 2.0);
 
-// --- Construtor de Golpes (Moves) ---
-// MUDANÇA IMPORTANTE: Renomeei o argumento e a variável para evitar conflito com 'power'
-function Move(_name, _type, _power, _cooldown, _shape, _range, _speed, _color) constructor {
-    name = _name;
-    type = _type;
-    base_power = _power; // Variável renomeada
-    cooldown = _cooldown; 
-    shape = _shape; 
-    range = _range; 
-    spd = _speed; 
-    color = _color;
-}
-
-// --- Biblioteca de Golpes ---
-global.move_library = {};
-
-// Exemplo: Água
-global.move_library.water_jet = new Move("Jato de Água", ELEMENT.AGUA, 10, 60, "linear", 300, 6, c_aqua);
-global.move_library.whirlpool = new Move("Redemoinho", ELEMENT.AGUA, 5, 120, "circle_aoe", 64, 0, c_blue);
-
-// Exemplo: Fogo
-global.move_library.flamethrower = new Move("Lança-Chamas", ELEMENT.FOGO, 12, 90, "cone", 150, 5, c_orange);
-global.move_library.ember = new Move("Brasinha", ELEMENT.FOGO, 4, 45, "linear", 250, 7, c_red);
-
-// Exemplo: Sombra
-global.move_library.shadow_ball = new Move("Bola Sombra", ELEMENT.SOMBRA, 15, 100, "linear", 350, 5, c_purple);
+// Nota: O construtor legado "Move" e a "global.move_library" foram removidos 
+// pois a criação de ataques real é gerenciada no script centralizado "scr_combat_logic" 
+// por meio do construtor "create_attack" e de "global.attack_database".
