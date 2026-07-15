@@ -70,19 +70,8 @@ switch (state) {
         hspd = lengthdir_x(spd_walk, dir);
         vspd = lengthdir_y(spd_walk, dir);
         
-        // Colisão Horizontal
-        if (place_meeting(x + hspd, y, obj_parede)) {
-            while (!place_meeting(x + sign(hspd), y, obj_parede)) x += sign(hspd);
-            hspd = 0;
-        }
-        x += hspd;
-        
-        // Colisão Vertical
-        if (place_meeting(x, y + vspd, obj_parede)) {
-            while (!place_meeting(x, y + sign(vspd), obj_parede)) y += sign(vspd);
-            vspd = 0;
-        }
-        y += vspd;
+        // Colisão e Movimento
+        move_and_collide(hspd, vspd, obj_parede);
         
         sprite_index = sprite_walk[face];
         image_speed = 1.0;
@@ -112,18 +101,8 @@ switch (state) {
         hspd = lengthdir_x(spd_run, dir);
         vspd = lengthdir_y(spd_run, dir);
         
-        // Colisões
-        if (place_meeting(x + hspd, y, obj_parede)) {
-            while (!place_meeting(x + sign(hspd), y, obj_parede)) x += sign(hspd);
-            hspd = 0;
-        }
-        x += hspd;
-        
-        if (place_meeting(x, y + vspd, obj_parede)) {
-            while (!place_meeting(x, y + sign(vspd), obj_parede)) y += sign(vspd);
-            vspd = 0;
-        }
-        y += vspd;
+        // Colisão e Movimento
+        move_and_collide(hspd, vspd, obj_parede);
         
         sprite_index = sprite_walk[face]; 
         image_speed = 2.0;
@@ -143,11 +122,8 @@ switch (state) {
         hspd = lengthdir_x(dash_spd, dir);
         vspd = lengthdir_y(dash_spd, dir);
         
-        if (place_meeting(x + hspd, y, obj_parede)) hspd = 0;
-        if (place_meeting(x, y + vspd, obj_parede)) vspd = 0;
-        
-        x += hspd;
-        y += vspd;
+        // Colisão e Movimento
+        move_and_collide(hspd, vspd, obj_parede);
         
         sprite_index = sprite_dash[face];
         
