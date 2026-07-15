@@ -17,11 +17,11 @@ if (attack_data.shape == "circle" || attack_data.shape == "line") {
         y += lengthdir_y(attack_data.proj_speed, direction);
         dist_traveled += attack_data.proj_speed;
         
-        if (dist_traveled >= attack_data.range) instance_destroy();
+        if (dist_traveled >= attack_data.range) { instance_destroy(); exit; }
     } else {
         // Parede estática
         life_timer++;
-        if (life_timer > 120) instance_destroy(); // Dura 2 seg
+        if (life_timer > 120) { instance_destroy(); exit; } // Dura 2 seg
     }
 }
 
@@ -29,7 +29,7 @@ if (attack_data.shape == "circle" || attack_data.shape == "line") {
 if (attack_data.shape == "area" || attack_data.shape == "self" || attack_data.shape == "cone") {
     life_timer++;
     // Duração visual do efeito
-    if (life_timer > 30) instance_destroy(); 
+    if (life_timer > 30) { instance_destroy(); exit; } 
 }
 
 // --- Colisão e Dano ---
