@@ -138,5 +138,8 @@ switch (state) {
         break;
 }
 
+// Ordenação de Profundidade (GPU Depth Buffer / Y-sorting)
+depth = -bbox_bottom;
+
 // Morte
 if (hp <= 0) instance_destroy();

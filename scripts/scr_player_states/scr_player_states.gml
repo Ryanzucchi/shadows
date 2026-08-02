@@ -8,7 +8,6 @@ function state_free() {
     v_spd = lengthdir_y(spd_current, input_dir);
 
     // 3. Colisão e Movimento (Sistema moderno move_and_collide)
-    // Se estiver usando versão antiga, avise que mando o código de place_meeting
     move_and_collide(h_spd, v_spd, obj_parede); // Substitua obj_wall pelo seu objeto de colisão
 
     // 4. Atualizar Sprite e Direção do Rosto
