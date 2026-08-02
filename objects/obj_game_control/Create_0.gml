@@ -48,6 +48,26 @@ set_eff(ELEMENT.SOMBRA, ELEMENT.PSIQUICO, 2.0);
 set_eff(ELEMENT.SOMBRA, ELEMENT.LUZ, 2.0);
 set_eff(ELEMENT.LUZ, ELEMENT.SOMBRA, 2.0);
 
+// --- Configuração de Profundidade via GPU Depth Buffer (3D em 2D) ---
+gpu_set_ztestenable(true);
+gpu_set_zwriteenable(true);
+gpu_set_alphatestenable(true);
+gpu_set_alphatestref(10);
+
+// --- Instanciar Sistemas e Objetos Permanentes ---
+if (!instance_exists(obj_inventory_ui)) {
+    instance_create_layer(0, 0, "Instances", obj_inventory_ui);
+}
+if (!instance_exists(obj_estante_tubos)) {
+    instance_create_layer(220, 180, "Instances", obj_estante_tubos);
+}
+if (!instance_exists(obj_npc_vendedor)) {
+    instance_create_layer(340, 180, "Instances", obj_npc_vendedor);
+}
+
+// --- Gerar o Chão do Mundo com Tilesets ---
+init_world_ground();
+
 // Nota: O construtor legado "Move" e a "global.move_library" foram removidos 
 // pois a criação de ataques real é gerenciada no script centralizado "scr_combat_logic" 
 // por meio do construtor "create_attack" e de "global.attack_database".
