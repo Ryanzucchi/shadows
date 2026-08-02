@@ -1,7 +1,10 @@
 /// @description Lógica Principal + DEBUG
 
+// --- Regeneração de Mana ---
+mana = min(max_mana, mana + mana_regen);
+
 // =========================================================
-// 1. CAPTURA DE INPUTS
+// 1. CAPTURA DE INPUTS (TECLADO / MOUSE / GAMEPAD)
 // =========================================================
 var _xaxis = 0;
 var _yaxis = 0;
@@ -11,6 +14,12 @@ var _key_up    = keyboard_check(vk_up) or keyboard_check(ord("W"));
 var _key_down  = keyboard_check(vk_down) or keyboard_check(ord("S"));
 var _key_dash  = keyboard_check_pressed(vk_space) or keyboard_check_pressed(ord("K"));
 var _key_run   = keyboard_check(vk_shift); 
+
+var _key_attack = mouse_check_button_pressed(mb_left);
+var _key_capture = keyboard_check_pressed(ord("C")) or mouse_check_button_pressed(mb_right);
+var _key_lockon = keyboard_check_pressed(ord("R")) or mouse_check_button_pressed(mb_middle);
+var _key_special_menu = keyboard_check(ord("E")) or keyboard_check(vk_tab);
+var _aim_dir = point_direction(x, y, mouse_x, mouse_y);
 
 _xaxis = _key_right - _key_left;
 _yaxis = _key_down - _key_up;
@@ -22,8 +31,56 @@ if (gamepad_is_connected(0)) {
         _xaxis = _gp_h;
         _yaxis = _gp_v;
     }
-    if (gamepad_button_check_pressed(0, gp_face1)) _key_dash = true;
-    if (gamepad_button_check(0, gp_face3)) _key_run = true;
+    
+    // Correr via LT (Gatilho Esquerdo)
+    var _lt_val = gamepad_button_value(0, gp_shoulderlb);
+    if (_lt_val > 0.2 || gamepad_button_check(0, gp_shoulderlb)) _key_run = true;
+    
+    // Mira pelo Analógico Direito
+    var _gp_rh = gamepad_axis_value(0, gp_axisrh);
+    var _gp_rv = gamepad_axis_value(0, gp_axisrv);
+    if (abs(_gp_rh) > 0.2 || abs(_gp_rv) > 0.2) {
+        _aim_dir = point_direction(0, 0, _gp_rh, _gp_rv);
+    } else if (_xaxis != 0 || _yaxis != 0) {
+        _aim_dir = dir;
+    }
+    
+    if (gamepad_button_check_pressed(0, gp_face1)) _key_dash = true;       // A = Dash
+    if (gamepad_button_check_pressed(0, gp_face4)) _key_capture = true;    // Y = Capturar Inimigo
+    if (gamepad_button_check_pressed(0, gp_stickr)) _key_lockon = true;    // R3 (Clicar Analógico Direito) = Lock-on Inimigo
+    if (gamepad_button_check_pressed(0, gp_shoulderrb) || gamepad_button_check_pressed(0, gp_shoulderr)) _key_attack = true; // RT/R2 = Disparar Magia
+    if (gamepad_button_check(0, gp_shoulderl)) _key_special_menu = true; // LB = Menu Especiais
+}
+
+// --- LÓGICA DE LOCK-ON ---
+if (_key_lockon) {
+    if (lockon_target != noone) {
+        lockon_target = noone; // Destrava se já houver um alvo
+    } else {
+        // Busca inimigo mais próximo
+        var _cand = noone;
+        var _min_d = 450;
+        with (obj_monster) {
+            if (!variable_instance_exists(id, "is_ally") || !is_ally) {
+                var _d = point_distance(other.x, other.y, x, y);
+                if (_d < _min_d) { _min_d = _d; _cand = id; }
+            }
+        }
+        if (_cand == noone) {
+            var _orc = instance_nearest(x, y, obj_orc_teste);
+            if (_orc != noone && point_distance(x, y, _orc.x, _orc.y) < 450) _cand = _orc;
+        }
+        lockon_target = _cand;
+    }
+}
+
+// Validação do Lock-on
+if (lockon_target != noone) {
+    if (!instance_exists(lockon_target) || point_distance(x, y, lockon_target.x, lockon_target.y) > 500) {
+        lockon_target = noone;
+    } else {
+        _aim_dir = point_direction(x, y, lockon_target.x, lockon_target.y);
+    }
 }
 
 // =========================================================
@@ -153,58 +210,74 @@ if (hp <= 0 && state != "DEAD") {
 // ... (seu código de movimento anterior continua igual) ...
 
 // =========================================================
-// 3. SISTEMA DE COMBATE DO JOGADOR (ATUALIZADO)
+// 3. SISTEMA DE COMBATE DO JOGADOR (MAGIA DO TOMO + MANA)
 // =========================================================
-if (mouse_check_button_pressed(mb_left)) {
+var _spell = variable_global_exists("equipped_spell") ? global.equipped_spell : global.spell_database.faisca;
+var _spell_cost = _spell.mana_cost;
+
+if (_key_attack && mana >= _spell_cost) {
+    mana -= _spell_cost;
     
-    // 1. Acessa o banco de dados do tipo FOGO
-    var _db_player = global.attack_database.fogo;
-    
-    // 2. Escolhe um ataque da lista de BÁSICOS (basics)
-    // Índice 0 = Faísca, Índice 1 = Brasa
-    var _ataque_escolhido = _db_player.basics[0]; 
-    
-    // 3. Cria o Projétil
+    var _ataque_escolhido = _spell.attack;
     var _proj = instance_create_layer(x, y, "Instances", obj_skillshot);
     
-    // 4. Configura os dados
     _proj.attack_data = _ataque_escolhido;
     _proj.owner = id;
     _proj.target_type = obj_monster; // Jogador acerta monstros
     
-    // 5. Direção e Velocidade
-    var _dir = point_direction(x, y, mouse_x, mouse_y);
-    _proj.direction = _dir;
-    _proj.image_angle = _dir;
+    _proj.direction = _aim_dir;
+    _proj.image_angle = _aim_dir;
     
-    _proj.velocity_x = lengthdir_x(_ataque_escolhido.proj_speed, _dir);
-    _proj.velocity_y = lengthdir_y(_ataque_escolhido.proj_speed, _dir);
+    _proj.velocity_x = lengthdir_x(_ataque_escolhido.proj_speed, _aim_dir);
+    _proj.velocity_y = lengthdir_y(_ataque_escolhido.proj_speed, _aim_dir);
 }
 
 // =========================================================
-// 4. SISTEMA DE CAPTURA
+// 3.5 COMANDO DE ESPECIAL DO MONSTRO SELECIONADO (V / RB)
 // =========================================================
-if (keyboard_check_pressed(ord("C"))) {
-    // Acha o monstro mais próximo num raio grande (300 pixels) para atirar
-    var _nearest = collision_circle(x, y, 300, obj_monster, false, true);
-    if (_nearest == noone) {
-        _nearest = collision_circle(x, y, 300, obj_orc_teste, false, true);
+var _key_monster_special = keyboard_check_pressed(ord("V")) || (gamepad_is_connected(0) && gamepad_button_check_pressed(0, gp_shoulderrb));
+
+if (_key_monster_special && array_length(global.party) > 0) {
+    selected_party_index = clamp(selected_party_index, 0, array_length(global.party) - 1);
+    var _m_data = global.party[selected_party_index];
+    
+    if (variable_struct_exists(_m_data, "is_summoned") && _m_data.is_summoned && instance_exists(_m_data.summon_id)) {
+        var _mon_inst = _m_data.summon_id;
+        
+        _mon_inst.current_attack = _m_data.special_atk;
+        _mon_inst.target_x = x + lengthdir_x(_m_data.special_atk.range, _aim_dir);
+        _mon_inst.target_y = y + lengthdir_y(_m_data.special_atk.range, _aim_dir);
+        _mon_inst.state = MO_STATE.ATTACKING;
+        
+        show_debug_message("💥 COMANDOU ATAQUE ESPECIAL: " + _m_data.name + " -> " + _m_data.special_atk.name);
+    }
+}
+
+// =========================================================
+// 4. SISTEMA DE CAPTURA (C / MOUSE RIGHT / BOTÃO Y)
+// =========================================================
+if (_key_capture) {
+    var _nearest = lockon_target;
+    if (_nearest == noone || !instance_exists(_nearest)) {
+        _nearest = collision_circle(x, y, 350, obj_monster, false, true);
+        if (_nearest == noone) {
+            _nearest = collision_circle(x, y, 350, obj_orc_teste, false, true);
+        }
     }
     
-    if (_nearest != noone) {
-        // Atira uma orbe visual usando obj_skillshot
+    if (_nearest != noone && instance_exists(_nearest)) {
         var _proj = instance_create_layer(x, y, "Instances", obj_skillshot);
         
         var _cap_data = {
             name: "Orbe de Captura",
-            element: "sombra", // Usa a estética de sombra (roxo)
+            element: "sombra",
             damage: 0,
             shape: "circle",
             range: 350,
             proj_speed: 6,
             color: c_fuchsia,
             width: 15,
-            effect: "capture" // Novo efeito de captura!
+            effect: "capture"
         };
         
         _proj.attack_data = _cap_data;
@@ -220,57 +293,79 @@ if (keyboard_check_pressed(ord("C"))) {
 }
 
 // =========================================================
-// 5. INVOCAR / RECOLHER MONSTROS (Teclas 1 a 6)
+// 5. NAVEGAÇÃO E INVOCAÇÃO DE FRASCOS/MONSTROS (D-Pad + LB)
 // =========================================================
-if (!global.capture_pending) {
+if (!global.capture_pending && array_length(global.party) > 0) {
+    // 1. Navegação entre os Frascos (D-Pad Esquerda/Direita ou Q/E ou Scroll)
+    var _nav_left = keyboard_check_pressed(ord("Q")) || mouse_wheel_up();
+    var _nav_right = keyboard_check_pressed(ord("E")) || mouse_wheel_down();
+    var _key_summon = keyboard_check_pressed(ord("F"));
+    
+    if (gamepad_is_connected(0)) {
+        if (gamepad_button_check_pressed(0, gp_padl)) _nav_left = true;
+        if (gamepad_button_check_pressed(0, gp_padr)) _nav_right = true;
+        if (gamepad_button_check_pressed(0, gp_shoulderl)) _key_summon = true; // LB para Invocar/Recolher frasco selecionado
+    }
+    
+    if (_nav_left) {
+        selected_party_index--;
+        if (selected_party_index < 0) selected_party_index = array_length(global.party) - 1;
+    }
+    if (_nav_right) {
+        selected_party_index++;
+        if (selected_party_index >= array_length(global.party)) selected_party_index = 0;
+    }
+    
+    // Atalho numérico direto (1 a 6) no teclado
     for (var i = 1; i <= 6; i++) {
-        // Verifica tanto o número acima das letras quanto o numpad
-        var _key_pressed = keyboard_check_pressed(ord(string(i))) || keyboard_check_pressed(vk_numpad0 + i);
-        
-        if (_key_pressed) {
-            var _idx = i - 1;
-            if (_idx < array_length(global.party)) {
-                var _m_data = global.party[_idx];
-                
-                // Garantia de segurança (caso o monstro seja antigo no save)
-                if (!variable_struct_exists(_m_data, "is_summoned")) _m_data.is_summoned = false;
-                if (!variable_struct_exists(_m_data, "summon_id")) _m_data.summon_id = noone;
-                
-                if (_m_data.is_summoned) {
-                    // Recolhe
-                    if (instance_exists(_m_data.summon_id)) {
-                        instance_destroy(_m_data.summon_id);
-                    }
-                    _m_data.is_summoned = false;
-                    _m_data.summon_id = noone;
-                    show_debug_message("Recolheu: " + _m_data.name);
-                } else {
-                    // Invoca
-                    var _spawn_x = x + random_range(-40, 40);
-                    var _spawn_y = y + random_range(-40, 40);
-                    var _inst = instance_create_layer(_spawn_x, _spawn_y, "Instances", obj_monster);
-                    
-                    // Vincula os dados
-                    _inst.monster_data = _m_data;
-                    _inst.hp = _m_data.hp;
-                    _inst.max_hp = _m_data.max_hp;
-                    _inst.spd = _m_data.spd;
-                    _inst.type_1 = _m_data.element;
-                    _inst.basic_atk = _m_data.basic_atk;
-                    _inst.special_atk = _m_data.special_atk;
-                    
-                    // Flags de Aliado
-                    _inst.is_ally = true;
-                    _m_data.is_summoned = true;
-                    _m_data.summon_id = _inst;
-                    
-                    // Garantia para IA (antigos)
-                    if (!variable_struct_exists(_m_data, "mood")) _m_data.mood = "Calmo";
-                    if (!variable_struct_exists(_m_data, "personality")) _m_data.personality = "Leal";
-                    
-                    show_debug_message("Invocou: " + _m_data.name + " (" + _m_data.mood + " / " + _m_data.personality + ")");
-                }
+        if (keyboard_check_pressed(ord(string(i))) || keyboard_check_pressed(vk_numpad0 + i)) {
+            var _num_idx = i - 1;
+            if (_num_idx < array_length(global.party)) {
+                selected_party_index = _num_idx;
+                _key_summon = true;
             }
+        }
+    }
+    
+    selected_party_index = clamp(selected_party_index, 0, array_length(global.party) - 1);
+    
+    // Executa a Invocação ou Recolhimento do Frasco Selecionado
+    if (_key_summon) {
+        var _m_data = global.party[selected_party_index];
+        
+        if (!variable_struct_exists(_m_data, "is_summoned")) _m_data.is_summoned = false;
+        if (!variable_struct_exists(_m_data, "summon_id")) _m_data.summon_id = noone;
+        
+        if (_m_data.is_summoned) {
+            // Recolhe
+            if (instance_exists(_m_data.summon_id)) {
+                instance_destroy(_m_data.summon_id);
+            }
+            _m_data.is_summoned = false;
+            _m_data.summon_id = noone;
+            show_debug_message("Recolheu frasco " + string(selected_party_index + 1) + ": " + _m_data.name);
+        } else {
+            // Invoca
+            var _spawn_x = x + random_range(-40, 40);
+            var _spawn_y = y + random_range(-40, 40);
+            var _inst = instance_create_layer(_spawn_x, _spawn_y, "Instances", obj_monster);
+            
+            _inst.monster_data = _m_data;
+            _inst.hp = _m_data.hp;
+            _inst.max_hp = _m_data.max_hp;
+            _inst.spd = _m_data.spd;
+            _inst.type_1 = _m_data.element;
+            _inst.basic_atk = _m_data.basic_atk;
+            _inst.special_atk = _m_data.special_atk;
+            
+            _inst.is_ally = true;
+            _m_data.is_summoned = true;
+            _m_data.summon_id = _inst;
+            
+            if (!variable_struct_exists(_m_data, "mood")) _m_data.mood = "Calmo";
+            if (!variable_struct_exists(_m_data, "personality")) _m_data.personality = "Leal";
+            
+            show_debug_message("Invocou frasco " + string(selected_party_index + 1) + ": " + _m_data.name);
         }
     }
 }

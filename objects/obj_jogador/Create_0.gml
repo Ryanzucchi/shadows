@@ -8,14 +8,21 @@ hspd = 0;
 vspd = 0;
 len = 0;
 dir = 0;
+gp_aim_dir = 0;
+lockon_target = noone; // Inimigo atualmente travado pelo Lock-on
+selected_party_index = 0; // Índice do frasco/monstrinho selecionado na equipe
 
 hp = 100;
+max_hp = 100;
+mana = 100;
+max_mana = 100;
+mana_regen = 0.2; // Regeneração de mana por frame
 
 spd_walk = 2.0;    // Velocidade normal
 spd_run  = 6.5;    // Velocidade correndo (Shift)
 dash_spd = 6.0;    // Velocidade do Dash
 
-state = "IDLE";    // <--- O ERRO ACONTECEU PQ ESSA VARIÁVEL NÃO TINHA SIDO LIDA AINDA
+state = "IDLE";    // Estado inicial
 face = 6;          // Começa virado para baixo
 
 // --- 3. Arrays de Sprites ---

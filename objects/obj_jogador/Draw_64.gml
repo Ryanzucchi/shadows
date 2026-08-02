@@ -74,25 +74,50 @@ var _cy = 10;
 draw_set_color(c_yellow);
 draw_text(_cx, _cy, "--- CONTROLES ---");
 draw_set_color(c_white);
-draw_text(_cx, _cy + 20, "WASD / Setas : Mover");
-draw_text(_cx, _cy + 40, "SHIFT        : Correr");
-draw_text(_cx, _cy + 60, "Espaço / K   : Dash");
-draw_text(_cx, _cy + 80, "C            : Capturar Inimigo");
-draw_text(_cx, _cy + 100,"Botão Esq.   : Atirar Magia");
-draw_text(_cx, _cy + 120,"1 a 6        : Invocar/Recolher Party");
-draw_text(_cx, _cy + 140,"F2           : Status Completo (Lvl/Humor)");
+draw_text(_cx, _cy + 20, "WASD / LS      : Mover");
+draw_text(_cx, _cy + 40, "SHIFT / LT     : Correr");
+draw_text(_cx, _cy + 60, "Espaço / Botão A: Dash");
+draw_text(_cx, _cy + 80, "Mouse Dir/C/Y  : Capturar");
+draw_text(_cx, _cy + 100,"Mouse Esq/RT   : Atirar Magia");
+draw_text(_cx, _cy + 120,"R / MouseMid/R3: Lock-on (Travar Inimigo)");
+draw_text(_cx, _cy + 140,"1-6 / D-Pad    : Invocar/Recolher Monstro");
+draw_text(_cx, _cy + 160,"F2             : Menu de Status");
 
 // ==========================================
 // 2. STATUS DO JOGADOR (Esquerda Inferior)
 // ==========================================
-_cy += 140;
+_cy += 160;
 draw_set_color(c_lime);
-draw_text(_cx, _cy, "--- STATUS ---");
+draw_text(_cx, _cy, "--- STATUS DA BRUXA ---");
 draw_set_color(c_white);
 draw_text(_cx, _cy + 20, "Level: " + string(global.player_level) + " / " + string(global.player_max_level));
-draw_text(_cx, _cy + 40, "HP: " + string(ceil(hp)));
-draw_text(_cx, _cy + 60, "Estado: " + string(state));
-draw_text(_cx, _cy + 80, "Box: " + string(array_length(global.box)) + " monstros guardados");
+
+// Barra de HP
+var _bar_w = 150;
+var _bar_h = 12;
+var _hp_ratio = clamp(hp / max_hp, 0, 1);
+draw_set_color(c_dkgray);
+draw_rectangle(_cx, _cy + 42, _cx + _bar_w, _cy + 42 + _bar_h, false);
+draw_set_color(c_red);
+draw_rectangle(_cx, _cy + 42, _cx + (_bar_w * _hp_ratio), _cy + 42 + _bar_h, false);
+draw_set_color(c_white);
+draw_text(_cx + 5, _cy + 40, "HP: " + string(ceil(hp)) + "/" + string(max_hp));
+
+// Barra de Mana
+var _mana_ratio = clamp(mana / max_mana, 0, 1);
+draw_set_color(c_dkgray);
+draw_rectangle(_cx, _cy + 62, _cx + _bar_w, _cy + 62 + _bar_h, false);
+draw_set_color(c_blue);
+draw_rectangle(_cx, _cy + 62, _cx + (_bar_w * _mana_ratio), _cy + 62 + _bar_h, false);
+draw_set_color(c_white);
+draw_text(_cx + 5, _cy + 60, "Mana: " + string(ceil(mana)) + "/" + string(max_mana));
+
+var _spell_name = variable_global_exists("equipped_spell") ? global.equipped_spell.name : "Faísca Incandescente";
+draw_set_color(c_yellow);
+draw_text(_cx, _cy + 80, "Tomo (Mouse L): " + _spell_name);
+draw_set_color(c_white);
+draw_text(_cx, _cy + 100, "Estado: " + string(state));
+draw_text(_cx, _cy + 120, "Estante (Box): " + string(array_length(global.box)) + " tubos guardados");
 
 // ==========================================
 // 3. EXIBIR A PARTY (Direita)
@@ -132,14 +157,22 @@ if (array_length(global.party) == 0) {
             default:       _col = c_ltgray; break;
         }
         
-        draw_set_color(_col);
+        var _is_selected = (i == selected_party_index);
         
-        var _txt_prefix = _mon.is_summoned ? "[OUT] " : "";
-        draw_text(_px, _py, string(i+1) + ". " + _txt_prefix + _mon.name + " (Lvl." + string(_mon.level) + ")");
+        // Fundo/Destaque do Frasco Selecionado
+        if (_is_selected) {
+            draw_set_color(c_yellow);
+            draw_rectangle(_px - 8, _py - 2, _px + 230, _py + 32, true);
+        }
+        
+        draw_set_color(_col);
+        var _txt_prefix = _mon.is_summoned ? "[INVOCADO] " : "";
+        var _sel_cursor = _is_selected ? "► " : "   ";
+        draw_text(_px, _py, _sel_cursor + string(i+1) + ". " + _txt_prefix + _mon.name + " (Lvl." + string(_mon.level) + ")");
         
         draw_set_color(c_white);
         _py += 15;
-        draw_text(_px, _py, "   HP: " + string(ceil(_mon.hp)) + "/" + string(_mon.max_hp));
+        draw_text(_px + 15, _py, "   HP: " + string(ceil(_mon.hp)) + "/" + string(_mon.max_hp));
         _py += 25; // Espaço pro próximo
     }
 }
